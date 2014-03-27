@@ -5,7 +5,7 @@
 #include <morecolors>
 #include <steamtools>
 
-#define PLUGIN_VERSION "1.2.3"
+#define PLUGIN_VERSION "1.2.4"
 
 #define TF_CLASS_DEMOMAN		4
 #define TF_CLASS_ENGINEER		9
@@ -160,7 +160,7 @@ public OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 public OnChangeTeam(Handle:event,  const String:name[], bool:dontBroadcast)
 {
 	new client=GetClientOfUserId(GetEventInt(event, "userid"));
-	if(!IsValidClass(client, clientClass[client]))
+	if(IsValidClient(client) && IsValidClass(client, clientClass[client]))
 	{
 		EmitSoundToClient(client, classSounds[clientClass[client]]);
 		AssignValidClass(client);
