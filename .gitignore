@@ -1,0 +1,79 @@
+#This is so you can put this repo in your server directory without stuff blowing up :)
+
+#GLOBAL
+*.bak
+*.ztmp
+
+#ROOT
+/*.bat
+/*.cache
+/*.cfg
+/*.inf
+/*.rad
+/*.raw
+/*.res
+/.hg_archival.txt
+/gameinfo.txt
+/GPL*.txt
+/item_whitelist_example.txt
+/LICENSE.txt
+/mapcycle.txt
+/stats.txt
+/umc_mapcycle.txt
+/*.vbsp
+/*.vdf
+/*.vpk
+
+#ADDONS
+/addons/metamod/
+/addons/sourcemod/bin/
+/addons/stripper/
+/addons/sourcemod/.hg_archival.txt
+
+#SOURCEMOD CONFIGS
+/addons/sourcemod/configs/
+
+#SOURCEMOD RANDOM STUFF
+/addons/sourcemod/data/
+/addons/sourcemod/extensions/
+/addons/sourcemod/gamedata/*.games/
+/addons/sourcemod/gamedata/sm-tf2.games.txt
+/addons/sourcemod/gamedata/tf2.items.txt
+/addons/sourcemod/gamedata/tf2items.*
+/addons/sourcemod/logs/
+
+#SOURCEMOD PLUGINS
+/addons/sourcemod/plugins/
+
+#SOURCEMOD SOURCE FILES
+/addons/sourcemod/scripting/*
+!/addons/sourcemod/scripting/class_warfare.sp
+/addons/sourcemod/source/
+
+#SOURCEMOD TRANSLATIONS
+/addons/sourcemod/translations/
+
+#RANDOM STUFF
+/bin/
+motd.txt
+update_tf2.txt
+
+#CONFIGS
+/cfg/
+
+#CUSTOM
+/custom/
+
+#DOWNLOAD STUFFS
+/download/
+/downloadlists/
+
+#MAPS
+/maps/
+
+#MOAR RANDOM STUFF
+/materials/models/player/items/templates/standard.vmt
+/media/
+/replay/
+/resource/
+/scripts/
