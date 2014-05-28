@@ -1,0 +1,7 @@
+install:
+	- wget http://www.gsptalk.com/mirror/sourcemod/sourcemod-1.5.3-linux.tar.gz
+	- gzip -d ./sourcemod-1.5.3-linux.tar.gz
+	- tar -x ./sourcemod-1.5.3-linux.tar
+	- git clone https://github.com/50DKP/Class-Warfare.git
+script:
+	- addons/sourcemod/scripting/compile.sh class_warfare.sp
