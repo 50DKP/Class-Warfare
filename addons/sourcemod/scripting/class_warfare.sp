@@ -8,7 +8,7 @@
 #include <morecolors>
 #include <steamtools>
 
-#define PLUGIN_VERSION "1.3.0"
+#define PLUGIN_VERSION "2.0.0"
 
 #define TF_CLASS_UNKNOWN		0
 #define TF_CLASS_SCOUT			1
@@ -44,13 +44,10 @@ public Plugin:myinfo=
 	url="https://github.com/50DKP/Class-Warfare/"
 }
 
-new clientClass[MAXPLAYERS+1];
 new Handle:cvarEnabled;
 new Handle:cvarMode;
-new Handle:cvarFlags;
-new Handle:cvarImmunity;
 new Handle:cvarClassChangeInterval;
-new Float:classLimits[4][10];
+//new Float:classLimits[4][10];
 new String:classSounds[10][24]={"", "vo/scout_no03.wav", "vo/sniper_no04.wav", "vo/soldier_no01.wav", "vo/demoman_no03.wav", "vo/medic_no03.wav", "vo/heavy_no02.wav", "vo/pyro_no01.wav", "vo/spy_no02.wav", "vo/engineer_no03.wav"};
 
 static String:ClassNames[TFClassType][]={"", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
@@ -63,19 +60,16 @@ new RandomizedThisRound=0;
 public OnPluginStart()
 {
 	CreateConVar("sm_classwarfare_version", PLUGIN_VERSION, "Class Warfare version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	cvarEnabled=CreateConVar("sm_classwarfare_enabled", "1", "Enable/disable Class Warfare");
+	cvarEnabled=CreateConVar("sm_classwarfare_enabled", "1", "Enable/disable Class Warfare", FCVAR_PLUGIN|FCVAR_DONTRECORD, true, 0.0, true, 1.0);
 	cvarMode=CreateConVar("sm_classwarfare_mode", "0", "0-Classes are picked randomly, 1-Classes are picked by a vote", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	cvarFlags=CreateConVar("sm_classwarfare_flags", "", "Admin flags for restricted classes");
-	cvarImmunity=CreateConVar("sm_classwarfare_immunity", "0", "Enable/disable admins being immune for restricted classes", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	cvarClassChangeInterval=CreateConVar("sm_classwarfare_change_interval", "0", "Shuffle the classes every x minutes, or 0 for round only", FCVAR_PLUGIN, true, 0.0);
 
 	RegAdminCmd("sm_classwarfare_change", ForceChangeClass, ADMFLAG_VOTE, "Change the classes around!  Optionally, you can specify the classes you want it to change to.");
 	RegConsoleCmd("sm_classwarfare_vote", Vote_ChangeClass, "Vote to change the classes!");
 	RegConsoleCmd("sm_classwarfare_help", Command_Help, "Find out what classes are in play and some other help!");
 
-	HookEvent("player_changeclass", OnChangeClass);
-	HookEvent("player_spawn", OnPlayerSpawn);
-	HookEvent("player_team", OnChangeTeam);
+	HookEvent("player_spawn", OnClassAssigned);  //These 2 are the same to simplify the code-they all do the exact same thing
+	HookEvent("player_changeclass", OnClassAssigned);
 	HookEvent("teamplay_round_start", OnRoundStart);
 	HookEvent("teamplay_setup_finished", OnSetupFinished);
 	HookEvent("teamplay_round_win", OnRoundEnd);
@@ -86,11 +80,14 @@ public OnPluginStart()
 
 public OnConfigsExecuted()
 {
-	CreateTimer(120.0, Timer_Announce);
+	CreateTimer(120.0, Timer_Announce, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 
-	decl String:description[64];
-	Format(description, sizeof(description), "Class Warfare %s", PLUGIN_VERSION);
-	Steam_SetGameDescription(description);
+	if(GetConVarBool(cvarEnabled))
+	{
+		decl String:description[64];
+		Format(description, sizeof(description), "Class Warfare %s", PLUGIN_VERSION);
+		Steam_SetGameDescription(description);
+	}
 }
 
 public OnMapStart()
@@ -98,83 +95,50 @@ public OnMapStart()
 	SetupClassRestrictions();
 
 	decl String:sound[32];
-	for(new i=1; i<sizeof(classSounds); i++)
+	for(new class=1; class<sizeof(classSounds); class++)
 	{
-		Format(sound, sizeof(sound), "sound/%s", classSounds[i]);
-		PrecacheSound(classSounds[i]);
-		AddFileToDownloadsTable(sound);
+		Format(sound, sizeof(sound), "sound/%s", classSounds[class]);
+		PrecacheSound(classSounds[class]);
 	}
 }
 
 public OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	if(GetEventInt(event, "full_round")==1) 
+	if(GetConVarBool(cvarEnabled) && GetEventInt(event, "full_round")==1)
 	{
 		RandomizedThisRound=0;
 	}
 }
 
-public OnClientPutInServer(client)
+public OnClassAssigned(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	clientClass[client]=TF_CLASS_UNKNOWN;
-}
-
-public OnChangeClass(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	if(!GetConVarBool(cvarEnabled))
+	if(GetConVarBool(cvarEnabled))
 	{
-		return;
+		CheckClass(GetClientOfUserId(GetEventInt(event, "userid")), GetEventInt(event, "class"));
 	}
-
-	new client=GetClientOfUserId(GetEventInt(event, "userid")),
-	class=GetEventInt(event, "class");
-
-	if(!IsValidClass(client, class))
-	{
-		EmitSoundToClient(client, classSounds[class]);
-		PrintCenterText(client, "%s%s%s%s%s", ClassNames[class],  " is not an option this round! It's Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
-		CPrintToChat(client, "%s%s%s%s%s", ClassNames[class],  " is not an option this round! It's {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
-		AssignValidClass(client);
-	}	
 }
 
 public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	if(GetConVarBool(cvarMode))
+	if(GetConVarBool(cvarEnabled))
 	{
-		DisplayVote(0, 1);
+		if(GetConVarBool(cvarMode))
+		{
+			DisplayVote(0, 1);
+		}
+		else
+		{
+			RoundClassRestrictions();
+		}
+		PrintStatus();
 	}
-	else
-	{
-		RoundClassRestrictions();
-	}
-	PrintStatus();
 } 
 
-public Action:OnSetupFinished(Handle:event,  const String:name[], bool:dontBroadcast) 
-{   
-	PrintStatus();
-}  
-
-public OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
+public Action:OnSetupFinished(Handle:event,  const String:name[], bool:dontBroadcast)
 {
-	new client=GetClientOfUserId(GetEventInt(event, "userid"));  
-	new class=_:TF2_GetPlayerClass(client);
-	
-	if(!IsValidClass(client, class))
+	if(GetConVarBool(cvarEnabled))
 	{
-		EmitSoundToClient(client, classSounds[class]);
-		AssignValidClass(client);
-	}
-}
-
-public OnChangeTeam(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	new client=GetClientOfUserId(GetEventInt(event, "userid"));
-	if(IsValidClient(client) && !IsValidClass(client, clientClass[client]))
-	{
-		EmitSoundToClient(client, classSounds[clientClass[client]]);
-		AssignValidClass(client);
+		PrintStatus();
 	}
 }
 
@@ -185,8 +149,21 @@ stock bool:IsValidClass(client, class)
 		return false;
 	}
 
-	new team=GetClientTeam(client);
-	if(!(GetConVarBool(cvarImmunity) && IsImmune(client)) && IsClassFull(team, class))
+	if(class!=(GetClientTeam(client)==TF_TEAM_RED ? redClass : blueClass))
+	{
+		return false;
+	}
+	return true;
+}
+
+/*stock bool:IsValidClass(client, class)
+{
+	if(!IsValidClient(client))
+	{
+		return false;
+	}
+
+	if(!(GetConVarBool(cvarImmunity) && IsImmune(client)) && IsClassFull(GetClientTeam(client)), class))
 	{
 		return false;
 	}
@@ -227,36 +204,33 @@ stock bool:IsClassFull(team, class)
 		}
 	}
 	return false;
+}*/
+
+CheckClass(client, class)
+{
+	if(!IsValidClass(client, class))
+	{
+		EmitSoundToClient(client, classSounds[class]);
+		PrintCenterText(client, "%s%s%s%s%s", ClassNames[class],  " is not an option this round! It's Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
+		CPrintToChat(client, "%s%s%s%s%s", ClassNames[class],  " is not an option this round! It's {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
+		AssignValidClass(client);
+	}
 }
 
 PrintStatus()
 {
-	if(!GetConVarBool(cvarEnabled))
+	if(GetConVarBool(cvarEnabled))
 	{
-		return;
+		PrintCenterTextAll("%s%s%s%s", "This is Class Warfare: Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
+		CPrintToChatAll("%s%s%s%s", "This is Class Warfare: {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
 	}
-
-	PrintCenterTextAll("%s%s%s%s", "This is Class Warfare: Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
-	CPrintToChatAll("%s%s%s%s", "This is Class Warfare: {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
-}
-
-stock bool:IsImmune(client)
-{
-	if(!client || !IsValidClient(client))
-	{
-		return false;
-	}
-
-	decl String:flags[32];
-	GetConVarString(cvarFlags, flags, sizeof(flags));
-	return !StrEqual(flags, "") && GetUserFlagBits(client) & (ReadFlagString(flags)|ADMFLAG_ROOT);
 }
 
 AssignPlayerClasses()
 {
 	for(new client=1; client<=MaxClients; client++)
 	{
-		if(IsValidClient(client) && !IsValidClass(client, clientClass[client]))
+		if(IsValidClient(client) && !IsValidClass(client, _:TF2_GetPlayerClass(client)))
 		{
 			AssignValidClass(client);
 		}
@@ -275,11 +249,11 @@ RoundClassRestrictions()
 
 SetupClassRestrictions(randomize=1)
 {
-	for(new class=TF_CLASS_SCOUT; class<=TF_CLASS_ENGINEER; class++)
+	/*for(new class=TF_CLASS_SCOUT; class<=TF_CLASS_ENGINEER; class++)
 	{
 		classLimits[TF_TEAM_BLU][class]=0.0;
 		classLimits[TF_TEAM_RED][class]=0.0;
-	}
+	}*/
 
 	if(randomize)
 	{
@@ -287,8 +261,8 @@ SetupClassRestrictions(randomize=1)
 		redClass=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
 	}
 
-	classLimits[TF_TEAM_BLU][blueClass]=-1.0;
-	classLimits[TF_TEAM_RED][redClass]=-1.0; 
+	/*classLimits[TF_TEAM_BLU][blueClass]=-1.0;
+	classLimits[TF_TEAM_RED][redClass]=-1.0; */
 
 	new seconds=GetConVarInt(cvarClassChangeInterval)*60;
 	if(seconds>0)
@@ -302,16 +276,26 @@ public Action:Timer_Change_Class(Handle:timer, any:randomize)
 	SetupClassRestrictions(randomize);
 	PrintCenterTextAll("%s%s%s%s", "Mid Round Class Change: Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
 	CPrintToChatAll("%s%s%s%s", "Mid Round Class Change: {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
+
+	for(new client=1; client<=MaxClients; client++)
+	{
+		if(IsValidClient(client))
+		{
+			AssignValidClass(client);
+		}
+	}
 }
 
 AssignValidClass(client)
 {
-	if(!IsValidClient(client))
+	TF2_SetPlayerClass(client, (GetClientTeam(client)==TF_TEAM_RED ? (TFClassType:redClass) : (TFClassType:blueClass)));
+	TF2_RegeneratePlayer(client);
+	if(!IsPlayerAlive(client))
 	{
-		return;
+		TF2_RespawnPlayer(client);
 	}
 
-	for(new class=(TF_CLASS_SCOUT, TF_CLASS_ENGINEER), finalClass=class, team=GetClientTeam(client); ; )
+	/*for(new class=(TF_CLASS_SCOUT, TF_CLASS_ENGINEER), finalClass=class, team=GetClientTeam(client); ; )
 	{
 		if(!IsClassFull(team, class))
 		{
@@ -332,12 +316,12 @@ AssignValidClass(client)
 		{
 			break;
 		}
-	}
+	}*/
 }
 
 public Action:Timer_Announce(Handle:timer)
 {
-	switch(GetRandomInt(0, 1))
+	switch(GetRandomInt(0, 2))
 	{
 		case 0:
 		{
@@ -347,18 +331,16 @@ public Action:Timer_Announce(Handle:timer)
 		{
 			CPrintToChatAll("{red}[Class Warfare]{default} Don't like the current classes?  Try {red}!classwarfare_vote{default}");
 		}
+		case 2:
+		{
+			CPrintToChatAll("{red}[Class Warfare]{default} Brought to you by {olive}Wliu{default} and {olive}JonathanFlynn{default}");
+		}
 	}
 	return Plugin_Continue;
 }
 
 public Action:ForceChangeClass(client, args)
 {
-	if(!IsValidClient(client))
-	{
-		CReplyToCommand(client, "{red}[Class Warfare]{default} This command must be used in-game and without RCON.");
-		return Plugin_Handled;
-	}
-
 	switch(args)
 	{
 		case 0:
@@ -453,14 +435,14 @@ public Action:ForceChangeClass(client, args)
 			}
 			else
 			{
-				CPrintToChat(client, "{red}[Class Warfare]{default} Invalid class for blue team!");
+				CReplyToCommand(client, "{red}[Class Warfare]{default} Invalid class for blue team!");
 				randomize=1;
 			}
 			CreateTimer(0.0, Timer_Change_Class, randomize);
 		}
 		default:
 		{
-			CPrintToChat(client, "{red}[Class Warfare]{default} sm_classwarfare_change <red class> <blue class>");
+			CReplyToCommand(client, "{red}[Class Warfare]{default} sm_classwarfare_change <red class> <blue class>");
 		}
 	}
 	return Plugin_Handled;
