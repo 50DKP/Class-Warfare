@@ -96,12 +96,8 @@ public OnConfigsExecuted()
 	if(enabled)
 	{
 		immune=GetConVarBool(cvarImmune);
-
 		CreateTimer(120.0, Timer_Announce, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-
-		decl String:description[64];
-		Format(description, sizeof(description), "Class Warfare %s", PLUGIN_VERSION);
-		Steam_SetGameDescription(description);
+		UpdateGameDescription(true);
 	}
 }
 
@@ -110,10 +106,11 @@ public OnCvarChange(Handle:convar, const String:oldValue[], const String:newValu
 	if(convar==cvarEnabled)
 	{
 		enabled=bool:StringToInt(newValue);
+		UpdateGameDescription(enabled);
 	}
 	else if(convar==cvarImmune)
 	{
-		enabled=bool:StringToInt(newValue);
+		immune=bool:StringToInt(newValue);
 	}
 }
 
@@ -836,6 +833,20 @@ CloseVoteMenu()
 {
 	CloseHandle(voteMenu);
 	voteMenu=INVALID_HANDLE;
+}
+
+UpdateGameDescription(bool:enable)
+{
+	if(enable)
+	{
+		decl String:description[64];
+		Format(description, sizeof(description), "Class Warfare %s", PLUGIN_VERSION);
+		Steam_SetGameDescription(description);
+	}
+	else
+	{
+		Steam_SetGameDescription("Team Fortress");
+	}
 }
 
 stock bool:IsValidClient(client, bool:replay=true)
