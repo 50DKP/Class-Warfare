@@ -9,7 +9,7 @@
 #include <morecolors>
 #include <steamtools>
 
-#define PLUGIN_VERSION "2.0.0-Dev"
+#define PLUGIN_VERSION "2.0.0"
 
 #define TF_CLASS_UNKNOWN		0
 #define TF_CLASS_SCOUT			1
@@ -54,7 +54,6 @@ new Handle:cvarClassChangeInterval;
 new bool:enabled;
 new bool:immune;
 
-//new Float:classLimits[4][10];
 new String:classSounds[10][24]={"", "vo/scout_no03.wav", "vo/sniper_no04.wav", "vo/soldier_no01.wav", "vo/demoman_no03.wav", "vo/medic_no03.wav", "vo/heavy_no02.wav", "vo/pyro_no01.wav", "vo/spy_no02.wav", "vo/engineer_no03.wav"};
 
 static String:ClassNames[TFClassType][]={"", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
@@ -80,7 +79,7 @@ public OnPluginStart()
 	RegConsoleCmd("sm_classwarfare_vote", Vote_ChangeClass, "Vote to change the classes!");
 	RegConsoleCmd("sm_classwarfare_help", Command_Help, "Find out what classes are in play and some other help!");
 
-	HookEvent("player_spawn", OnClassAssigned);  //These 2 are the same to simplify the code-they do the exact same thing
+	HookEvent("player_spawn", OnClassAssigned);
 	HookEvent("player_changeclass", OnClassAssigned);
 	HookEvent("teamplay_round_start", OnRoundStart);
 	HookEvent("teamplay_setup_finished", OnSetupFinished);
@@ -208,56 +207,6 @@ stock bool:IsImmune(client)
 	return !StrEqual(flags, "") && GetUserFlagBits(client) & (ReadFlagString(flags)|ADMFLAG_ROOT);
 }
 
-/*stock bool:IsValidClass(client, class)
-{
-	if(!IsValidClient(client))
-	{
-		return false;
-	}
-
-	if(!(immune && IsImmune(client)) && IsClassFull(GetClientTeam(client)), class))
-	{
-		return false;
-	}
-	return true;   
-}
-
-stock bool:IsClassFull(team, class)
-{
-	if(!enabled || team<TF_TEAM_RED || class<TF_CLASS_SCOUT)
-	{
-		return false;
-	}
-
-	new limit, Float:actualLimit=classLimits[team][class];
-	if(actualLimit>0.0 && actualLimit<1.0)
-	{
-		limit=RoundToNearest(actualLimit*GetTeamClientCount(team));
-	}
-	else
-	{
-		limit=RoundToNearest(actualLimit);
-	}
-
-	if(limit==-1)
-	{
-		return false;
-	}
-	else if(limit==0)
-	{
-		return true;
-	}
-
-	for(new client=1, count=0; client<=MaxClients; client++)
-	{
-		if(IsValidClient(client) && GetClientTeam(client)==team && _:TF2_GetPlayerClass(team)==class && ++count>limit)
-		{
-			return true;
-		}
-	}
-	return false;
-}*/
-
 PrintStatus()
 {
 	PrintCenterTextAll("%s%s%s%s", "This is Class Warfare: Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
@@ -287,20 +236,11 @@ RoundClassRestrictions()
 
 SetupClassRestrictions(randomize=1)
 {
-	/*for(new class=TF_CLASS_SCOUT; class<=TF_CLASS_ENGINEER; class++)
-	{
-		classLimits[TF_TEAM_BLU][class]=0.0;
-		classLimits[TF_TEAM_RED][class]=0.0;
-	}*/
-
 	if(randomize)
 	{
 		blueClass=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
 		redClass=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
 	}
-
-	/*classLimits[TF_TEAM_BLU][blueClass]=-1.0;
-	classLimits[TF_TEAM_RED][redClass]=-1.0; */
 
 	new seconds=GetConVarInt(cvarClassChangeInterval)*60;
 	if(seconds>0)
@@ -332,29 +272,6 @@ AssignValidClass(client)
 	{
 		TF2_RespawnPlayer(client);
 	}
-
-	/*for(new class=(TF_CLASS_SCOUT, TF_CLASS_ENGINEER), finalClass=class, team=GetClientTeam(client); ; )
-	{
-		if(!IsClassFull(team, class))
-		{
-			TF2_SetPlayerClass(client, TFClassType:class);
-			TF2_RegeneratePlayer(client);
-			if(!IsPlayerAlive(client))
-			{
-				TF2_RespawnPlayer(client);
-			}
-			clientClass[client]=class;
-			break;
-		}
-		else if(++class>TF_CLASS_ENGINEER)
-		{
-			class=TF_CLASS_SCOUT;
-		}
-		else if(class==finalClass)
-		{
-			break;
-		}
-	}*/
 }
 
 public Action:Timer_Announce(Handle:timer)
