@@ -1,7 +1,8 @@
 install:
     - wget http://www.gsptalk.com/mirror/sourcemod/sourcemod-1.5.3-linux.tar.gz
     - tar -zxvf sourcemod-1.5.3-linux.tar.gz
-before_script:
-    - ls addons/sourcemod/scripting #...
+before_script:  #Seriously now
+    - cd addons/sourcemod/scripting
+    - ls
 script:
     - addons/sourcemod/scripting/compile.sh class_warfare.sp
