@@ -5,4 +5,4 @@ before_script:  #Seriously now
     - cd addons/sourcemod/scripting
     - ls
 script:
-    - addons/sourcemod/scripting/compile.sh class_warfare.sp
+    - ./compile.sh class_warfare.sp
