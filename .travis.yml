@@ -1,7 +1,5 @@
 install:
     - wget http://www.gsptalk.com/mirror/sourcemod/sourcemod-1.5.3-linux.tar.gz
     - tar -zxvf sourcemod-1.5.3-linux.tar.gz
-before_script:
-    - cd addons/sourcemod/scripting #Curse the Sourcepawn compiler-why can't they make it more robust D:
 script:
-    - ./compile.sh class_warfare.sp
+    - addons/sourcemod/scripting/spcomp class_warfare.sp -o../plugins/class_warfare.smx
