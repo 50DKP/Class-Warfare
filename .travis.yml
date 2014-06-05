@@ -9,6 +9,11 @@ install:
     - SMPACKAGE=`lynx -dump "$SMURL" | egrep -o "$SMPATTERN" | tail -1`
     - wget $SMPACKAGE
     - tar -xzf $(basename "$SMPACKAGE")
+    - STEAMTOOLSURL="http://builds.limetech.org/files/"
+    - STEAMTOOLSPATTERN="http:.*steamtools-.*-git.*-.*-linux.zip"
+    - STEAMTOOLSPACKAGE=`lynx -dump "$STEAMTOOLSURL" | egrep -o "$STEAMTOOLSPATTERN" | tail -1`
+    - wget $STEAMTOOLSPACKAGE
+    - unzip -ou $(basename "$STEAMTOOLSPACKAGE")
 before_script:
     - cd addons/sourcemod/scripting/
     - wget "https://www.doctormckay.com/download/scripting/include/morecolors.inc"
