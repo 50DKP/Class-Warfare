@@ -2,6 +2,8 @@ Class Warfare
 =============
 **LATEST VERSION**: 2.0.0
 
+[![Build Status](https://travis-ci.org/50DKP/Class-Warfare.svg?branch=master)](https://travis-ci.org/50DKP/Class-Warfare)
+
 Class Warfare is a Sourcemod plugin for TF2 that pits two classes against each other, for example pyro vs spy.
 Classes are randomized every round, and can also be re-randomized during the round using `sm_classwarfare_change_interval <seconds>`, `sm_classwarfare_change [red class] [blue class]`, or `sm_classwarfare_vote`.
 
