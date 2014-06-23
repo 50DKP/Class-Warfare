@@ -9,7 +9,7 @@
 #include <morecolors>
 #include <steamtools>
 
-#define PLUGIN_VERSION "2.0.0"
+#define PLUGIN_VERSION "2.0.2"
 
 #define TF_CLASS_UNKNOWN		0
 #define TF_CLASS_SCOUT			1
@@ -27,14 +27,6 @@
 
 #define VOTE_NO					"###no###"
 #define VOTE_YES				"###yes###"
-
-new Handle:voteMenu=INVALID_HANDLE;
-new Handle:voteDelayTimer=INVALID_HANDLE;
-
-new voted[MAXPLAYERS+1]={false, ...};
-new bool:voteAllowed=true;
-new voteDelay=0;
-
 
 public Plugin:myinfo=
 {
@@ -54,14 +46,14 @@ new Handle:cvarClassChangeInterval;
 new bool:enabled;
 new bool:immune;
 
-new String:classSounds[10][24]={"", "vo/scout_no03.wav", "vo/sniper_no04.wav", "vo/soldier_no01.wav", "vo/demoman_no03.wav", "vo/medic_no03.wav", "vo/heavy_no02.wav", "vo/pyro_no01.wav", "vo/spy_no02.wav", "vo/engineer_no03.wav"};
+new Handle:voteMenu=INVALID_HANDLE;
+new Float:voteDelay;
 
-static String:ClassNames[TFClassType][]={"", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
+static String:classSounds[10][24]={"", "vo/scout_no03.wav", "vo/sniper_no04.wav", "vo/soldier_no01.wav", "vo/demoman_no03.wav", "vo/medic_no03.wav", "vo/heavy_no02.wav", "vo/pyro_no01.wav", "vo/spy_no02.wav", "vo/engineer_no03.wav"};
+static String:classNames[TFClassType][]={"", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
 
 new blueClass;
 new redClass;
-
-new RandomizedThisRound=0;
 
 public OnPluginStart()
 {
@@ -83,7 +75,6 @@ public OnPluginStart()
 	HookEvent("player_changeclass", OnClassAssigned);
 	HookEvent("teamplay_round_start", OnRoundStart);
 	HookEvent("teamplay_setup_finished", OnSetupFinished);
-	HookEvent("teamplay_round_win", OnRoundEnd);
 
 	LoadTranslations("common.phrases");
 	LoadTranslations("basevotes.phrases");
@@ -139,6 +130,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		}
 		PrintStatus();
 	}
+	return Plugin_Continue;
 } 
 
 public Action:OnSetupFinished(Handle:event, const String:name[], bool:dontBroadcast)
@@ -147,22 +139,16 @@ public Action:OnSetupFinished(Handle:event, const String:name[], bool:dontBroadc
 	{
 		PrintStatus();
 	}
+	return Plugin_Continue;
 }
 
-public OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	if(enabled && GetEventInt(event, "full_round")==1)
-	{
-		RandomizedThisRound=0;
-	}
-}
-
-public OnClassAssigned(Handle:event, const String:name[], bool:dontBroadcast)
+public Action:OnClassAssigned(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	if(enabled)
 	{
 		CheckClass(GetClientOfUserId(GetEventInt(event, "userid")), GetEventInt(event, "class"));
 	}
+	return Plugin_Continue;
 }
 
 CheckClass(client, class)
@@ -170,8 +156,8 @@ CheckClass(client, class)
 	if(!IsValidClass(client, class))
 	{
 		EmitSoundToClient(client, classSounds[class]);
-		PrintCenterText(client, "%s%s%s%s%s", ClassNames[class],  " is not an option this round! It's Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
-		CPrintToChat(client, "%s%s%s%s%s", ClassNames[class],  " is not an option this round! It's {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
+		PrintCenterText(client, "%s%s%s%s%s", classNames[class],  " is not an option this round! It's Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
+		CPrintToChat(client, "%s%s%s%s%s", classNames[class],  " is not an option this round! It's {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
 		AssignValidClass(client);
 	}
 }
@@ -209,8 +195,8 @@ stock bool:IsImmune(client)
 
 PrintStatus()
 {
-	PrintCenterTextAll("%s%s%s%s", "This is Class Warfare: Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
-	CPrintToChatAll("%s%s%s%s", "This is Class Warfare: {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
+	PrintCenterTextAll("%s%s%s%s", "This is Class Warfare: Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
+	CPrintToChatAll("%s%s%s%s", "This is Class Warfare: {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
 }
 
 AssignPlayerClasses()
@@ -226,11 +212,7 @@ AssignPlayerClasses()
 
 RoundClassRestrictions()
 {
-	if(RandomizedThisRound==0)
-	{
-		SetupClassRestrictions();
-	} 
-	RandomizedThisRound=1;
+	SetupClassRestrictions();
 	AssignPlayerClasses();
 }
 
@@ -252,8 +234,8 @@ SetupClassRestrictions(randomize=1)
 public Action:Timer_Change_Class(Handle:timer, any:randomize)
 {
 	SetupClassRestrictions(randomize);
-	PrintCenterTextAll("%s%s%s%s", "Mid Round Class Change: Red ", ClassNames[redClass], " vs Blue ", ClassNames[blueClass]);
-	CPrintToChatAll("%s%s%s%s", "Mid Round Class Change: {red}Red ", ClassNames[redClass], "{default} vs {blue}Blue ", ClassNames[blueClass]);
+	PrintCenterTextAll("%s%s%s%s", "Mid Round Class Change: Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
+	CPrintToChatAll("%s%s%s%s", "Mid Round Class Change: {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
 
 	for(new client=1; client<=MaxClients; client++)
 	{
@@ -262,14 +244,20 @@ public Action:Timer_Change_Class(Handle:timer, any:randomize)
 			AssignValidClass(client);
 		}
 	}
+	return Plugin_Continue;
 }
 
 AssignValidClass(client)
 {
-	TF2_SetPlayerClass(client, (GetClientTeam(client)==TF_TEAM_RED ? (TFClassType:redClass) : (TFClassType:blueClass)));
-	TF2_RegeneratePlayer(client);
 	if(!IsPlayerAlive(client))
 	{
+		TF2_SetPlayerClass(client, (GetClientTeam(client)==TF_TEAM_RED ? (TFClassType:redClass) : (TFClassType:blueClass)));
+	}
+	else
+	{
+		SetEntProp(client, Prop_Send, "m_lifeState", 2);
+		TF2_SetPlayerClass(client, (GetClientTeam(client)==TF_TEAM_RED ? (TFClassType:redClass) : (TFClassType:blueClass)));
+		SetEntProp(client, Prop_Send, "m_lifeState", 0);
 		TF2_RespawnPlayer(client);
 	}
 }
@@ -417,9 +405,10 @@ public Action:Vote_ChangeClass(client, args)
 		return Plugin_Handled;
 	}
 
-	if(!voteAllowed)
+	if(GetGameTime()<voteDelay)
 	{
-		CPrintToChat(client, "{red}[Class Warfare]{default} You must wait %i seconds until creating another vote", voteDelay);
+		CPrintToChat(client, "{red}[Class Warfare]{default} You must wait %i seconds until creating another vote", RoundFloat(voteDelay-GetGameTime()));
+		return Plugin_Handled;
 	}
 
 	DisplayVote(client, 0);
@@ -557,8 +546,8 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 	{
 		decl String:display[64];
 		GetMenuItem(menu, menuPosition, "", 0, _, display, sizeof(display));
-	 	if(strcmp(display, VOTE_NO)==0 || strcmp(display, VOTE_YES)==0)
-	 	{
+		if(strcmp(display, VOTE_NO)==0 || strcmp(display, VOTE_YES)==0)
+		{
 			decl String:buffer[255];
 			Format(buffer, sizeof(buffer), "%T", display, option);
 			return RedrawMenuItem(buffer);
@@ -567,7 +556,7 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 	else if(action==MenuAction_VoteCancel && option==VoteCancel_NoVotes)
 	{
 		CPrintToChatAll("{red}[Class Warfare]{default} %t", "No Votes Cast");
-		DelayVote();
+		voteDelay=GetGameTime()+60.0;
 	}
 	else if(action==MenuAction_VoteEnd)
 	{
@@ -589,7 +578,7 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 		{
 			CPrintToChatAll("{red}[Class Warfare]{default} %t", "Vote Failed", RoundToNearest(100.0*limit), RoundToNearest(100.0*percent), totalVotes);
 			LogAction(-1, -1, "[Class Warfare] Vote failed");
-			DelayVote();
+			voteDelay=GetGameTime()+60.0;
 		}
 		else
 		{
@@ -597,7 +586,7 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 			CPrintToChatAll("{red}[Class Warfare]{default} Re-rolling classes!");
 			LogAction(-1, -1, "[Class Warfare] Changing classes due to vote");
 			CreateTimer(0.0, Timer_Change_Class, 1);
-			DelayVote(true);
+			voteDelay=GetGameTime()+120.0;
 		}
 	}
 	return 0;
@@ -717,35 +706,6 @@ public Handler_VoteChooseClass(Handle:menu, MenuAction:action, option, menuPosit
 	return 0;
 }
 
-DelayVote(bool:success=false)
-{
-    for(new client=0; client<=MaxClients; client++)
-	{
-		voted[client]=false;
-	}
-
-    voteAllowed=false;
-    if(voteDelayTimer!=INVALID_HANDLE)
-    {
-        KillTimer(voteDelayTimer);
-        voteDelayTimer=INVALID_HANDLE;
-    }
-
-    voteDelay=60;
-    if(success)
-	{
-        voteDelay*=2;
-    }
-    voteDelayTimer=CreateTimer(float(voteDelay), TimerEnable, TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public Action:TimerEnable(Handle:timer)
-{
-    voteAllowed=true;
-    voteDelayTimer=INVALID_HANDLE;
-    return Plugin_Handled;
-}
-
 CloseVoteMenu()
 {
 	CloseHandle(voteMenu);
@@ -790,6 +750,6 @@ public Action:Command_Help(client, args)
 	CPrintToChat(client, "{red}[Class Warfare]{default} Class Warfare pits two classes against each other.  You cannot change your class.");
 	CPrintToChat(client, "{red}[Class Warfare]{default} At the end of each full round, classes are re-randomized.");
 	CPrintToChat(client, "{red}[Class Warfare]{default} If you feel like the classes are unfair, try voting to change the classes by using {red}!classwarfare_vote{default}.");
-	CPrintToChat(client, "{red}[Class Warfare]{default} It is currently {red}Red %s{default} vs {blue} Blue %s{default}!", ClassNames[redClass], ClassNames[blueClass]);
+	CPrintToChat(client, "{red}[Class Warfare]{default} It is currently {red}Red %s{default} vs {blue} Blue %s{default}!", classNames[redClass], classNames[blueClass]);
 	return Plugin_Handled;
 }
