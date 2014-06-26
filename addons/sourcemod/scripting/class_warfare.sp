@@ -85,8 +85,6 @@ public OnPluginStart()
 	RegConsoleCmd("sm_classwarfare_vote", Vote_ChangeClass, "Vote to change the classes!");
 	RegConsoleCmd("sm_classwarfare_help", Command_Help, "Find out what classes are in play and some other help!");
 
-	//HookEvent("player_spawn", OnClassAssigned);
-	//HookEvent("player_changeclass", OnClassAssigned);
 	HookEvent("teamplay_round_start", OnRoundStart);
 	HookEvent("teamplay_setup_finished", OnSetupFinished);
 
@@ -103,7 +101,7 @@ public OnPluginStart()
 public OnLibraryAdded(const String:name[])
 {
 	#if defined _steamtools_included
-	if(strcmp(name, "SteamTools", false)==0)
+	if(!strcmp(name, "SteamTools", false))
 	{
 		steamtools=true;
 	}
@@ -113,7 +111,7 @@ public OnLibraryAdded(const String:name[])
 public OnLibraryRemoved(const String:name[])
 {
 	#if defined _steamtools_included
-	if(strcmp(name, "SteamTools", false)==0)
+	if(!strcmp(name, "SteamTools", false))
 	{
 		steamtools=false;
 	}
@@ -172,8 +170,8 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		else
 		{
 			RoundClassRestrictions();
+			PrintStatus();
 		}
-		PrintStatus();
 	}
 	return Plugin_Continue;
 } 
@@ -186,15 +184,6 @@ public Action:OnSetupFinished(Handle:event, const String:name[], bool:dontBroadc
 	}
 	return Plugin_Continue;
 }
-
-/*public Action:OnClassAssigned(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	if(enabled)
-	{
-		CheckClass(GetClientOfUserId(GetEventInt(event, "userid")), GetEventInt(event, "class"));
-	}
-	return Plugin_Continue;
-}*/
 
 public Action:OnChangeClass(client, const String:command[], args)
 {
@@ -306,7 +295,7 @@ SetupClassRestrictions(randomize=1)
 	}
 
 	new seconds=GetConVarInt(cvarClassChangeInterval)*60;
-	if(seconds>0)
+	if(seconds)
 	{
 		CreateTimer(float(seconds), Timer_Change_Class, 1);
 	}
@@ -390,87 +379,11 @@ public Action:ForceChangeClass(client, args)
 			GetCmdArg(1, red, sizeof(red));
 			GetCmdArg(2, blue, sizeof(blue));
 
-			if(strcmp(red, "scout", false)==0)
+			redClass=ClassStringToClass(red);
+			blueClass=ClassStringToClass(blue);
+			if(redClass==TF_CLASS_UNKNOWN || blueClass==TF_CLASS_UNKNOWN)
 			{
-				redClass=TF_CLASS_SCOUT;
-			}
-			else if(strcmp(red, "soldier", false)==0)
-			{
-				redClass=TF_CLASS_SOLDIER;
-			}
-			else if(strcmp(red, "pyro", false)==0)
-			{
-				redClass=TF_CLASS_PYRO;
-			}
-			else if(strcmp(red, "demoman", false)==0 || strcmp(red, "demo", false)==0)
-			{
-				redClass=TF_CLASS_DEMOMAN;
-			}
-			else if(strcmp(red, "heavy", false)==0 || strcmp(red, "heavyweapons", false)==0)
-			{
-				redClass=TF_CLASS_HEAVY;
-			}
-			else if(strcmp(red, "engineer", false)==0 || strcmp(red, "engie", false)==0)
-			{
-				redClass=TF_CLASS_ENGINEER;
-			}
-			else if(strcmp(red, "medic", false)==0)
-			{
-				redClass=TF_CLASS_MEDIC;
-			}
-			else if(strcmp(red, "sniper", false)==0)
-			{
-				redClass=TF_CLASS_SNIPER;
-			}
-			else if(strcmp(red, "spy", false)==0)
-			{
-				redClass=TF_CLASS_SPY;
-			}
-			else
-			{
-				CPrintToChat(client, "{red}[Class Warfare]{default} Invalid class for red team!");
-				randomize=1;
-			}
-
-			if(strcmp(blue, "scout", false)==0)
-			{
-				blueClass=TF_CLASS_SCOUT;
-			}
-			else if(strcmp(blue, "soldier", false)==0)
-			{
-				blueClass=TF_CLASS_SOLDIER;
-			}
-			else if(strcmp(blue, "pyro", false)==0)
-			{
-				blueClass=TF_CLASS_PYRO;
-			}
-			else if(strcmp(blue, "demoman", false)==0 || strcmp(blue, "demo", false)==0)
-			{
-				blueClass=TF_CLASS_DEMOMAN;
-			}
-			else if(strcmp(blue, "heavy", false)==0 || strcmp(blue, "heavyweapons", false)==0)
-			{
-				blueClass=TF_CLASS_HEAVY;
-			}
-			else if(strcmp(blue, "engineer", false)==0 || strcmp(blue, "engie", false)==0)
-			{
-				blueClass=TF_CLASS_ENGINEER;
-			}
-			else if(strcmp(blue, "medic", false)==0)
-			{
-				blueClass=TF_CLASS_MEDIC;
-			}
-			else if(strcmp(blue, "sniper", false)==0)
-			{
-				blueClass=TF_CLASS_SNIPER;
-			}
-			else if(strcmp(blue, "spy", false)==0)
-			{
-				blueClass=TF_CLASS_SPY;
-			}
-			else
-			{
-				CReplyToCommand(client, "{red}[Class Warfare]{default} Invalid class for blue team!");
+				CPrintToChat(client, "{red}[Class Warfare]{default} Invalid class for %s team!", redClass==TF_CLASS_UNKNOWN ? "Red" : "Blue");
 				randomize=1;
 			}
 			CreateTimer(0.0, Timer_Change_Class, randomize);
@@ -637,7 +550,7 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 	{
 		decl String:display[64];
 		GetMenuItem(menu, menuPosition, "", 0, _, display, sizeof(display));
-		if(strcmp(display, VOTE_NO)==0 || strcmp(display, VOTE_YES)==0)
+		if(!strcmp(display, VOTE_NO) || !strcmp(display, VOTE_YES))
 		{
 			decl String:buffer[255];
 			Format(buffer, sizeof(buffer), "%T", display, option);
@@ -658,14 +571,14 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 		GetMenuVoteInfo(menuPosition, votes, totalVotes);
 		GetMenuItem(menu, option, item, sizeof(item));
 		
-		if(strcmp(item, VOTE_NO)==0 && option==1)
+		if(!strcmp(item, VOTE_NO) && option==1)
 		{
 			votes=totalVotes-votes;
 		}
 
 		percent=FloatDiv(float(votes), float(totalVotes));
 
-		if((strcmp(item, VOTE_YES)==0 && FloatCompare(percent, limit)<0 && option==0) || (strcmp(item, VOTE_NO)==0 && option==1))
+		if((!strcmp(item, VOTE_YES) && FloatCompare(percent, limit)<0 && option) || (!strcmp(item, VOTE_NO) && option==1))
 		{
 			CPrintToChatAll("{red}[Class Warfare]{default} %t", "Vote Failed", RoundToNearest(100.0*limit), RoundToNearest(100.0*percent), totalVotes);
 			LogAction(-1, -1, "[Class Warfare] Vote failed");
@@ -709,87 +622,11 @@ public Handler_VoteChooseClass(Handle:menu, votes, clients, const clientInfo[][2
 	ExplodeString(display, " vs ", classes, 2, 18);
 	CPrintToChatAll("{red}[Class Warfare]{default} Vote successful!  This round will be {red}Red %s{default} vs {blue}Blue %s{default}!", classes[0], classes[1]);
 
-	if(!strcmp("scout", classes[0], false))
+	redClass=ClassStringToClass(classes[0]);
+	blueClass=ClassStringToClass(classes[1]);
+	if(redClass==TF_CLASS_UNKNOWN || blueClass==TF_CLASS_UNKNOWN)
 	{
-		redClass=TF_CLASS_SCOUT;
-	}
-	else if(!strcmp("soldier", classes[0], false))
-	{
-		redClass=TF_CLASS_SOLDIER;
-	}
-	else if(!strcmp("pyro", classes[0], false))
-	{
-		redClass=TF_CLASS_PYRO;
-	}
-	else if(!strcmp("demoman", classes[0], false))
-	{
-		redClass=TF_CLASS_DEMOMAN;
-	}
-	else if(!strcmp("heavy", classes[0], false))
-	{
-		redClass=TF_CLASS_HEAVY;
-	}
-	else if(!strcmp("engineer", classes[0], false))
-	{
-		redClass=TF_CLASS_ENGINEER;
-	}
-	else if(!strcmp("medic", classes[0], false))
-	{
-		redClass=TF_CLASS_MEDIC;
-	}
-	else if(!strcmp("sniper", classes[0], false))
-	{
-		redClass=TF_CLASS_SNIPER;
-	}
-	else if(!strcmp("spy", classes[0], false))
-	{
-		redClass=TF_CLASS_SPY;
-	}
-	else
-	{
-		LogError("[Class Warfare] Class vote returned an unknown class for Red!");
-		randomize=1;
-	}
-
-	if(!strcmp("scout", classes[1], false))
-	{
-		blueClass=TF_CLASS_SCOUT;
-	}
-	else if(!strcmp("soldier", classes[1], false))
-	{
-		blueClass=TF_CLASS_SOLDIER;
-	}
-	else if(!strcmp("pyro", classes[1], false))
-	{
-		blueClass=TF_CLASS_PYRO;
-	}
-	else if(!strcmp("demoman", classes[1], false))
-	{
-		blueClass=TF_CLASS_DEMOMAN;
-	}
-	else if(!strcmp("heavy", classes[1], false))
-	{
-		blueClass=TF_CLASS_HEAVY;
-	}
-	else if(!strcmp("engineer", classes[1], false))
-	{
-		blueClass=TF_CLASS_ENGINEER;
-	}
-	else if(!strcmp("medic", classes[1], false))
-	{
-		blueClass=TF_CLASS_MEDIC;
-	}
-	else if(!strcmp("sniper", classes[1], false))
-	{
-		blueClass=TF_CLASS_SNIPER;
-	}
-	else if(!strcmp("spy", classes[1], false))
-	{
-		blueClass=TF_CLASS_SPY;
-	}
-	else
-	{
-		LogError("[Class Warfare] Class vote returned an unknown class for Blue!");
+		LogError("[Class Warfare] Class vote returned an unknown class for %s team!", redClass==TF_CLASS_UNKNOWN ? "Red" : "Blue");
 		randomize=1;
 	}
 
@@ -818,6 +655,31 @@ UpdateGameDescription(bool:enable)
 			Steam_SetGameDescription("Team Fortress");
 		}
 	}
+}
+
+stock ClassStringToClass(String:classString[])
+{
+	for(new class=0; class<sizeof(classNames); class++)
+	{
+		if(!strcmp(classNames[class], classString, false))
+		{
+			return class;
+		}
+	}
+
+	if(!strcmp("demo", classString, false))
+	{
+		return TF_CLASS_DEMOMAN;
+	}
+	else if(!strcmp("heavyweapons", classString, false))
+	{
+		return TF_CLASS_HEAVY;
+	}
+	else if(!strcmp("engie", classString, false))
+	{
+		return TF_CLASS_ENGINEER;
+	}
+	return TF_CLASS_UNKNOWN;
 }
 
 stock bool:IsValidClient(client, bool:replay=true)
