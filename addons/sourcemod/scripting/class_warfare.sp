@@ -56,7 +56,7 @@ new Handle:voteMenu=INVALID_HANDLE;
 new Float:voteDelay;
 
 static String:classSounds[10][24]={"", "vo/scout_no03.wav", "vo/sniper_no04.wav", "vo/soldier_no01.wav", "vo/demoman_no03.wav", "vo/medic_no03.wav", "vo/heavy_no02.wav", "vo/pyro_no01.wav", "vo/spy_no02.wav", "vo/engineer_no03.wav"};
-static String:classNames[TFClassType][]={"", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
+static String:classNames[TFClassType][]={"Random", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
 
 new blueClass;
 new redClass;
@@ -85,10 +85,12 @@ public OnPluginStart()
 	RegConsoleCmd("sm_classwarfare_vote", Vote_ChangeClass, "Vote to change the classes!");
 	RegConsoleCmd("sm_classwarfare_help", Command_Help, "Find out what classes are in play and some other help!");
 
-	HookEvent("player_spawn", OnClassAssigned);
-	HookEvent("player_changeclass", OnClassAssigned);
+	//HookEvent("player_spawn", OnClassAssigned);
+	//HookEvent("player_changeclass", OnClassAssigned);
 	HookEvent("teamplay_round_start", OnRoundStart);
 	HookEvent("teamplay_setup_finished", OnSetupFinished);
+
+	AddCommandListener(OnChangeClass, "joinclass");
 
 	LoadTranslations("common.phrases");
 	LoadTranslations("basevotes.phrases");
@@ -125,10 +127,7 @@ public OnConfigsExecuted()
 	{
 		immune=GetConVarBool(cvarImmune);
 		CreateTimer(120.0, Timer_Announce, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		if(steamtools)
-		{
-			UpdateGameDescription(true);
-		}
+		UpdateGameDescription(true);
 	}
 }
 
@@ -137,10 +136,7 @@ public OnCvarChange(Handle:convar, const String:oldValue[], const String:newValu
 	if(convar==cvarEnabled)
 	{
 		enabled=bool:StringToInt(newValue);
-		if(steamtools)
-		{
-			UpdateGameDescription(enabled);
-		}
+		UpdateGameDescription(enabled);
 	}
 	else if(convar==cvarImmune)
 	{
@@ -162,10 +158,7 @@ public OnMapStart()
 
 public OnMapEnd()
 {
-	if(steamtools)
-	{
-		UpdateGameDescription(false);
-	}
+	UpdateGameDescription(false);
 }
 
 public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast)
@@ -194,24 +187,71 @@ public Action:OnSetupFinished(Handle:event, const String:name[], bool:dontBroadc
 	return Plugin_Continue;
 }
 
-public Action:OnClassAssigned(Handle:event, const String:name[], bool:dontBroadcast)
+/*public Action:OnClassAssigned(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	if(enabled)
 	{
 		CheckClass(GetClientOfUserId(GetEventInt(event, "userid")), GetEventInt(event, "class"));
 	}
 	return Plugin_Continue;
-}
+}*/
 
-CheckClass(client, class)
+public Action:OnChangeClass(client, const String:command[], args)
 {
-	if(!IsValidClass(client, class))
+	decl String:classString[16];
+	new class;
+
+	GetCmdArg(1, classString, sizeof(classString));
+	if(!strcmp(classString, "scout", false))
+	{
+		class=TF_CLASS_SCOUT;
+	}
+	else if(!strcmp(classString, "soldier", false))
+	{
+		class=TF_CLASS_SOLDIER;
+	}
+	else if(!strcmp(classString, "pyro", false))
+	{
+		class=TF_CLASS_PYRO;
+	}
+	else if(!strcmp(classString, "demoman", false))
+	{
+		class=TF_CLASS_DEMOMAN;
+	}
+	else if(!strcmp(classString, "heavyweapons", false))
+	{
+		class=TF_CLASS_HEAVY;
+	}
+	else if(!strcmp(classString, "engineer", false))
+	{
+		class=TF_CLASS_ENGINEER;
+	}
+	else if(!strcmp(classString, "medic", false))
+	{
+		class=TF_CLASS_MEDIC;
+	}
+	else if(!strcmp(classString, "sniper", false))
+	{
+		class=TF_CLASS_SNIPER;
+	}
+	else if(!strcmp(classString, "spy", false))
+	{
+		class=TF_CLASS_SPY;
+	}
+	else if(!strcmp(classString, "random", false))
+	{
+		class=TF_CLASS_UNKNOWN;
+	}
+
+	if(enabled && !IsValidClass(client, class))
 	{
 		EmitSoundToClient(client, classSounds[class]);
-		PrintCenterText(client, "%s%s%s%s%s", classNames[class],  " is not an option this round! It's Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
-		CPrintToChat(client, "%s%s%s%s%s", classNames[class],  " is not an option this round! It's {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
+		PrintCenterText(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
+		CPrintToChat(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
 		AssignValidClass(client);
+		return Plugin_Handled;
 	}
+	return Plugin_Continue;
 }
 
 stock bool:IsValidClass(client, class)
@@ -753,7 +793,6 @@ public Handler_VoteChooseClass(Handle:menu, votes, clients, const clientInfo[][2
 		randomize=1;
 	}
 
-	//CreateTimer(0.0, Timer_Change_Class, randomize);
 	RoundClassRestrictions(randomize);
 	return;
 }
@@ -766,15 +805,18 @@ CloseVoteMenu()
 
 UpdateGameDescription(bool:enable)
 {
-	if(enable)
+	if(steamtools)
 	{
-		decl String:description[64];
-		Format(description, sizeof(description), "Class Warfare %s", PLUGIN_VERSION);
-		Steam_SetGameDescription(description);
-	}
-	else
-	{
-		Steam_SetGameDescription("Team Fortress");
+		if(enable)
+		{
+			decl String:description[64];
+			Format(description, sizeof(description), "Class Warfare %s", PLUGIN_VERSION);
+			Steam_SetGameDescription(description);
+		}
+		else
+		{
+			Steam_SetGameDescription("Team Fortress");
+		}
 	}
 }
 
@@ -797,7 +839,7 @@ public Action:Command_Help(client, args)
 	if(IsValidClient(client))
 	{
 		CPrintToChat(client, "{red}[Class Warfare]{default} Class Warfare pits two classes against each other.  You cannot change your class.");
-		CPrintToChat(client, "{red}[Class Warfare]{default} At the end of each full round, classes are re-randomized.");
+		CPrintToChat(client, "{red}[Class Warfare]{default} At the end of each round, classes are re-randomized.");
 		CPrintToChat(client, "{red}[Class Warfare]{default} If you feel like the classes are unfair, try voting to change the classes by using {red}!classwarfare_vote{default}.");
 		CPrintToChat(client, "{red}[Class Warfare]{default} It is currently {red}Red %s{default} vs {blue}Blue %s{default}!", classNames[redClass], classNames[blueClass]);
 	}
