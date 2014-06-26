@@ -7,9 +7,11 @@
 #include <sourcemod>
 #include <tf2_stocks>
 #include <morecolors>
-#include <steamtools>
+#undef REQUIRE_EXTENSIONS
+#tryinclude <steamtools>
+#define REQUIRE_EXTENSIONS
 
-#define PLUGIN_VERSION "2.0.2"
+#define PLUGIN_VERSION "2.1.0 Beta"
 
 #define TF_CLASS_UNKNOWN		0
 #define TF_CLASS_SCOUT			1
@@ -27,6 +29,10 @@
 
 #define VOTE_NO					"###no###"
 #define VOTE_YES				"###yes###"
+
+#if defined _steamtools_included
+new bool:steamtools;
+#endif
 
 public Plugin:myinfo=
 {
@@ -55,6 +61,14 @@ static String:classNames[TFClassType][]={"", "Scout", "Sniper", "Soldier", "Demo
 new blueClass;
 new redClass;
 
+public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+{
+	#if defined _steamtools_included
+	MarkNativeAsOptional("Steam_SetGameDescription");
+	#endif
+	return APLRes_Success;
+}
+
 public OnPluginStart()
 {
 	CreateConVar("sm_classwarfare_version", PLUGIN_VERSION, "Class Warfare version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
@@ -78,6 +92,30 @@ public OnPluginStart()
 
 	LoadTranslations("common.phrases");
 	LoadTranslations("basevotes.phrases");
+
+	#if defined _steamtools_included
+	steamtools=LibraryExists("SteamTools");
+	#endif
+}
+
+public OnLibraryAdded(const String:name[])
+{
+	#if defined _steamtools_included
+	if(strcmp(name, "SteamTools", false)==0)
+	{
+		steamtools=true;
+	}
+	#endif
+}
+
+public OnLibraryRemoved(const String:name[])
+{
+	#if defined _steamtools_included
+	if(strcmp(name, "SteamTools", false)==0)
+	{
+		steamtools=false;
+	}
+	#endif
 }
 
 public OnConfigsExecuted()
@@ -87,7 +125,10 @@ public OnConfigsExecuted()
 	{
 		immune=GetConVarBool(cvarImmune);
 		CreateTimer(120.0, Timer_Announce, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-		UpdateGameDescription(true);
+		if(steamtools)
+		{
+			UpdateGameDescription(true);
+		}
 	}
 }
 
@@ -96,7 +137,10 @@ public OnCvarChange(Handle:convar, const String:oldValue[], const String:newValu
 	if(convar==cvarEnabled)
 	{
 		enabled=bool:StringToInt(newValue);
-		UpdateGameDescription(enabled);
+		if(steamtools)
+		{
+			UpdateGameDescription(enabled);
+		}
 	}
 	else if(convar==cvarImmune)
 	{
@@ -113,6 +157,14 @@ public OnMapStart()
 	{
 		Format(sound, sizeof(sound), "sound/%s", classSounds[class]);
 		PrecacheSound(classSounds[class]);
+	}
+}
+
+public OnMapEnd()
+{
+	if(steamtools)
+	{
+		UpdateGameDescription(false);
 	}
 }
 
@@ -199,20 +251,9 @@ PrintStatus()
 	CPrintToChatAll("%s%s%s%s", "This is Class Warfare: {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
 }
 
-AssignPlayerClasses()
+RoundClassRestrictions(randomize=1)
 {
-	for(new client=1; client<=MaxClients; client++)
-	{
-		if(IsValidClient(client) && !IsValidClass(client, _:TF2_GetPlayerClass(client)))
-		{
-			AssignValidClass(client);
-		}
-	}
-}
-
-RoundClassRestrictions()
-{
-	SetupClassRestrictions();
+	SetupClassRestrictions(randomize);
 	AssignPlayerClasses();
 }
 
@@ -259,6 +300,17 @@ AssignValidClass(client)
 		TF2_SetPlayerClass(client, (GetClientTeam(client)==TF_TEAM_RED ? (TFClassType:redClass) : (TFClassType:blueClass)));
 		SetEntProp(client, Prop_Send, "m_lifeState", 0);
 		TF2_RespawnPlayer(client);
+	}
+}
+
+AssignPlayerClasses()
+{
+	for(new client=1; client<=MaxClients; client++)
+	{
+		if(IsValidClient(client) && !IsValidClass(client, _:TF2_GetPlayerClass(client)))
+		{
+			AssignValidClass(client);
+		}
 	}
 }
 
@@ -417,7 +469,7 @@ public Action:Vote_ChangeClass(client, args)
 
 DisplayVote(client, mode)
 {
-	if(mode==0)
+	if(!mode)
 	{
 		LogAction(client, -1, "\"%L\" initiated a Class Warfare vote", client);
 
@@ -432,54 +484,52 @@ DisplayVote(client, mode)
 	}
 	else
 	{
-		voteMenu=CreateMenu(Handler_VoteChooseClass, MenuAction:MENU_ACTIONS_ALL);
+		voteMenu=CreateMenu(Handler_VoteChooseClassBasic);
+		SetVoteResultCallback(voteMenu, Handler_VoteChooseClass);
 
 		SetMenuTitle(voteMenu, "Choose your classes!");
 		for(new i=1; i<=5; i++)  //Probably a much cleaner way of doing this, but eh
 		{
 			new class1=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
 			new class2=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
-			decl String:info[4];
-			decl String:display[20];
-			decl String:display1[10];
-			decl String:display2[10];
+			decl String:info[2], String:finalDisplay[22], String:display[2][10];
 			switch(class1)
 			{
 				case 1:
 				{
-					Format(display1, sizeof(display1), "Scout");
+					Format(display[0], 10, "Scout");
 				}
 				case 2:
 				{
-					Format(display1, sizeof(display1), "Soldier");
+					Format(display[0], 10, "Soldier");
 				}
 				case 3:
 				{
-					Format(display1, sizeof(display1), "Pyro");
+					Format(display[0], 10, "Pyro");
 				}
 				case 4:
 				{
-					Format(display1, sizeof(display1), "Demoman");
+					Format(display[0], 10, "Demoman");
 				}
 				case 5:
 				{
-					Format(display1, sizeof(display1), "Heavy");
+					Format(display[0], 10, "Heavy");
 				}
 				case 6:
 				{
-					Format(display1, sizeof(display1), "Engineer");
+					Format(display[0], 10, "Engineer");
 				}
 				case 7:
 				{
-					Format(display1, sizeof(display1), "Medic");
+					Format(display[0], 10, "Medic");
 				}
 				case 8:
 				{
-					Format(display1, sizeof(display1), "Sniper");
+					Format(display[0], 10, "Sniper");
 				}
 				case 9:
 				{
-					Format(display1, sizeof(display1), "Spy");
+					Format(display[0], 10, "Spy");
 				}
 			}
 
@@ -487,47 +537,48 @@ DisplayVote(client, mode)
 			{
 				case 1:
 				{
-					Format(display2, sizeof(display2), "Scout");
+					Format(display[1], 10, "Scout");
 				}
 				case 2:
 				{
-					Format(display2, sizeof(display2), "Soldier");
+					Format(display[1], 10, "Soldier");
 				}
 				case 3:
 				{
-					Format(display2, sizeof(display2), "Pyro");
+					Format(display[1], 10, "Pyro");
 				}
 				case 4:
 				{
-					Format(display2, sizeof(display2), "Demoman");
+					Format(display[1], 10, "Demoman");
 				}
 				case 5:
 				{
-					Format(display2, sizeof(display2), "Heavy");
+					Format(display[1], 10, "Heavy");
 				}
 				case 6:
 				{
-					Format(display2, sizeof(display2), "Engineer");
+					Format(display[1], 10, "Engineer");
 				}
 				case 7:
 				{
-					Format(display2, sizeof(display2), "Medic");
+					Format(display[1], 10, "Medic");
 				}
 				case 8:
 				{
-					Format(display2, sizeof(display2), "Sniper");
+					Format(display[1], 10, "Sniper");
 				}
 				case 9:
 				{
-					Format(display2, sizeof(display2), "Spy");
+					Format(display[1], 10, "Spy");
 				}
 			}
-			Format(display, sizeof(display), "%s vs %s", display1, display2);
+			Format(finalDisplay, sizeof(finalDisplay), "%s vs %s", display[0], display[1]);
 			Format(info, sizeof(info), "%i", i);
-			AddMenuItem(voteMenu, info, display);
-			SetMenuExitButton(voteMenu, false);
-			VoteMenuToAll(voteMenu, 20);
+			AddMenuItem(voteMenu, info, finalDisplay);
 		}
+		SetMenuTitle(voteMenu, "Choose your classes!");
+		SetMenuExitButton(voteMenu, false);
+		VoteMenuToAll(voteMenu, 20);
 	}
 }
 
@@ -592,118 +643,119 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 	return 0;
 }
 
-public Handler_VoteChooseClass(Handle:menu, MenuAction:action, option, menuPosition)
+public Handler_VoteChooseClassBasic(Handle:menu, MenuAction:action, option, menuPosition)
 {
 	if(action==MenuAction_End)
 	{
 		CloseVoteMenu();
 	}
-	else if(action==MenuAction_Display)
-	{
-		new Handle:panel=Handle:menuPosition;
-		SetPanelTitle(panel, "Choose your classes!");
-	}
 	else if(action==MenuAction_VoteCancel && option==VoteCancel_NoVotes)
 	{
-		CPrintToChatAll("{red}[Class Warfare]{default} %t", "No Votes Cast");
+		CPrintToChatAll("{red}[Class Warfare]{default} No votes cast, randomizing the classes!");
+		RoundClassRestrictions();
 	}
-	else if(action==MenuAction_VoteEnd)  //Oh this code!
+}
+
+public Handler_VoteChooseClass(Handle:menu, votes, clients, const clientInfo[][2], items, const itemInfo[][2])
+{
+	decl String:item[2], String:display[22], String:classes[2][18];
+	new randomize, winner;
+	if(items>1 && (itemInfo[0][VOTEINFO_ITEM_VOTES]==itemInfo[1][VOTEINFO_ITEM_VOTES]))
 	{
-		decl String:item[64], String:display[64], String:classes[16][2];
-		GetMenuItem(menu, option, item, sizeof(item));
-
-		if(strcmp(item, VOTE_NO)==0 || strcmp(item, VOTE_YES)==0)
-		{
-			strcopy(item, sizeof(item), display);
-		}
-		CPrintToChatAll("{red}[Class Warfare]{default} Vote successful!  This round will be %s!", item);
-		ExplodeString(item, " vs ", classes, 16, 2);
-
-		if(strcmp("scout", classes[0], false))
-		{
-			redClass=TF_CLASS_SCOUT;
-		}
-		else if(strcmp("soldier", classes[0], false))
-		{
-			redClass=TF_CLASS_SOLDIER;
-		}
-		else if(strcmp("pyro", classes[0], false))
-		{
-			redClass=TF_CLASS_PYRO;
-		}
-		else if(strcmp("demoman", classes[0], false))
-		{
-			redClass=TF_CLASS_DEMOMAN;
-		}
-		else if(strcmp("heavy", classes[0], false))
-		{
-			redClass=TF_CLASS_HEAVY;
-		}
-		else if(strcmp("engineer", classes[0], false))
-		{
-			redClass=TF_CLASS_ENGINEER;
-		}
-		else if(strcmp("medic", classes[0], false))
-		{
-			redClass=TF_CLASS_MEDIC;
-		}
-		else if(strcmp("sniper", classes[0], false))
-		{
-			redClass=TF_CLASS_SNIPER;
-		}
-		else if(strcmp("spy", classes[0], false))
-		{
-			redClass=TF_CLASS_SPY;
-		}
-		else
-		{
-			redClass=TF_CLASS_UNKNOWN;
-		}
-
-		if(strcmp("scout", classes[1], false))
-		{
-			blueClass=TF_CLASS_SCOUT;
-		}
-		else if(strcmp("soldier", classes[1], false))
-		{
-			blueClass=TF_CLASS_SOLDIER;
-		}
-		else if(strcmp("pyro", classes[1], false))
-		{
-			blueClass=TF_CLASS_PYRO;
-		}
-		else if(strcmp("demoman", classes[1], false))
-		{
-			blueClass=TF_CLASS_DEMOMAN;
-		}
-		else if(strcmp("heavy", classes[1], false))
-		{
-			blueClass=TF_CLASS_HEAVY;
-		}
-		else if(strcmp("engineer", classes[1], false))
-		{
-			blueClass=TF_CLASS_ENGINEER;
-		}
-		else if(strcmp("medic", classes[1], false))
-		{
-			blueClass=TF_CLASS_MEDIC;
-		}
-		else if(strcmp("sniper", classes[1], false))
-		{
-			blueClass=TF_CLASS_SNIPER;
-		}
-		else if(strcmp("spy", classes[1], false))
-		{
-			blueClass=TF_CLASS_SPY;
-		}
-		else
-		{
-			blueClass=TF_CLASS_UNKNOWN;
-		}
-
-		CreateTimer(0.0, Timer_Change_Class, 0);
+		winner=GetRandomInt(0, 1);
 	}
-	return 0;
+
+	GetMenuItem(menu, itemInfo[winner][VOTEINFO_ITEM_INDEX], item, sizeof(item), _, display, sizeof(display));
+	ExplodeString(display, " vs ", classes, 2, 18);
+	CPrintToChatAll("{red}[Class Warfare]{default} Vote successful!  This round will be {red}Red %s{default} vs {blue}Blue %s{default}!", classes[0], classes[1]);
+
+	if(!strcmp("scout", classes[0], false))
+	{
+		redClass=TF_CLASS_SCOUT;
+	}
+	else if(!strcmp("soldier", classes[0], false))
+	{
+		redClass=TF_CLASS_SOLDIER;
+	}
+	else if(!strcmp("pyro", classes[0], false))
+	{
+		redClass=TF_CLASS_PYRO;
+	}
+	else if(!strcmp("demoman", classes[0], false))
+	{
+		redClass=TF_CLASS_DEMOMAN;
+	}
+	else if(!strcmp("heavy", classes[0], false))
+	{
+		redClass=TF_CLASS_HEAVY;
+	}
+	else if(!strcmp("engineer", classes[0], false))
+	{
+		redClass=TF_CLASS_ENGINEER;
+	}
+	else if(!strcmp("medic", classes[0], false))
+	{
+		redClass=TF_CLASS_MEDIC;
+	}
+	else if(!strcmp("sniper", classes[0], false))
+	{
+		redClass=TF_CLASS_SNIPER;
+	}
+	else if(!strcmp("spy", classes[0], false))
+	{
+		redClass=TF_CLASS_SPY;
+	}
+	else
+	{
+		LogError("[Class Warfare] Class vote returned an unknown class for Red!");
+		randomize=1;
+	}
+
+	if(!strcmp("scout", classes[1], false))
+	{
+		blueClass=TF_CLASS_SCOUT;
+	}
+	else if(!strcmp("soldier", classes[1], false))
+	{
+		blueClass=TF_CLASS_SOLDIER;
+	}
+	else if(!strcmp("pyro", classes[1], false))
+	{
+		blueClass=TF_CLASS_PYRO;
+	}
+	else if(!strcmp("demoman", classes[1], false))
+	{
+		blueClass=TF_CLASS_DEMOMAN;
+	}
+	else if(!strcmp("heavy", classes[1], false))
+	{
+		blueClass=TF_CLASS_HEAVY;
+	}
+	else if(!strcmp("engineer", classes[1], false))
+	{
+		blueClass=TF_CLASS_ENGINEER;
+	}
+	else if(!strcmp("medic", classes[1], false))
+	{
+		blueClass=TF_CLASS_MEDIC;
+	}
+	else if(!strcmp("sniper", classes[1], false))
+	{
+		blueClass=TF_CLASS_SNIPER;
+	}
+	else if(!strcmp("spy", classes[1], false))
+	{
+		blueClass=TF_CLASS_SPY;
+	}
+	else
+	{
+		LogError("[Class Warfare] Class vote returned an unknown class for Blue!");
+		randomize=1;
+	}
+
+	//CreateTimer(0.0, Timer_Change_Class, randomize);
+	RoundClassRestrictions(randomize);
+	return;
 }
 
 CloseVoteMenu()
@@ -742,14 +794,12 @@ stock bool:IsValidClient(client, bool:replay=true)
 
 public Action:Command_Help(client, args)
 {
-	if(!IsValidClient(client))
+	if(IsValidClient(client))
 	{
-		return Plugin_Handled;
+		CPrintToChat(client, "{red}[Class Warfare]{default} Class Warfare pits two classes against each other.  You cannot change your class.");
+		CPrintToChat(client, "{red}[Class Warfare]{default} At the end of each full round, classes are re-randomized.");
+		CPrintToChat(client, "{red}[Class Warfare]{default} If you feel like the classes are unfair, try voting to change the classes by using {red}!classwarfare_vote{default}.");
+		CPrintToChat(client, "{red}[Class Warfare]{default} It is currently {red}Red %s{default} vs {blue}Blue %s{default}!", classNames[redClass], classNames[blueClass]);
 	}
-
-	CPrintToChat(client, "{red}[Class Warfare]{default} Class Warfare pits two classes against each other.  You cannot change your class.");
-	CPrintToChat(client, "{red}[Class Warfare]{default} At the end of each full round, classes are re-randomized.");
-	CPrintToChat(client, "{red}[Class Warfare]{default} If you feel like the classes are unfair, try voting to change the classes by using {red}!classwarfare_vote{default}.");
-	CPrintToChat(client, "{red}[Class Warfare]{default} It is currently {red}Red %s{default} vs {blue} Blue %s{default}!", classNames[redClass], classNames[blueClass]);
 	return Plugin_Handled;
 }
