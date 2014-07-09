@@ -61,6 +61,8 @@ static String:classNames[TFClassType][]={"Random", "Scout", "Sniper", "Soldier",
 new blueClass;
 new redClass;
 
+new rounds;
+
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
 	#if defined _steamtools_included
@@ -87,6 +89,7 @@ public OnPluginStart()
 
 	HookEvent("teamplay_round_start", OnRoundStart);
 	HookEvent("teamplay_setup_finished", OnSetupFinished);
+	HookEvent("teamplay_round_win", OnRoundEnd);
 
 	AddCommandListener(OnChangeClass, "joinclass");
 
@@ -144,7 +147,7 @@ public OnCvarChange(Handle:convar, const String:oldValue[], const String:newValu
 
 public OnMapStart()
 {
-	SetupClassRestrictions();
+	//SetupClassRestrictions();
 
 	decl String:sound[32];
 	for(new class=1; class<sizeof(classSounds); class++)
@@ -161,7 +164,7 @@ public OnMapEnd()
 
 public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	if(enabled)
+	if(enabled && rounds)
 	{
 		if(GetConVarBool(cvarMode))
 		{
@@ -178,24 +181,33 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 
 public Action:OnSetupFinished(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	if(enabled)
+	if(enabled && rounds)
 	{
 		PrintStatus();
 	}
 	return Plugin_Continue;
 }
 
+public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	rounds++;
+	return Plugin_Continue;
+}
+
 public Action:OnChangeClass(client, const String:command[], args)
 {
-	decl String:classString[16];
-	GetCmdArg(1, classString, sizeof(classString));
-	new class=ClassStringToClass(classString);
-	if(enabled && !IsValidClass(client, class))
+	if(enabled && args && rounds)
 	{
-		EmitSoundToClient(client, classSounds[class]);
-		PrintCenterText(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
-		CPrintToChat(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
-		return Plugin_Handled;
+		decl String:classString[16];
+		GetCmdArg(1, classString, sizeof(classString));
+		new class=ClassStringToClass(classString);
+		if(enabled && !IsValidClass(client, class))
+		{
+			EmitSoundToClient(client, classSounds[class]);
+			PrintCenterText(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
+			CPrintToChat(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
+			return Plugin_Handled;
+		}
 	}
 	return Plugin_Continue;
 }
