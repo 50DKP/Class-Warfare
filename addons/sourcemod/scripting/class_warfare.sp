@@ -188,56 +188,13 @@ public Action:OnSetupFinished(Handle:event, const String:name[], bool:dontBroadc
 public Action:OnChangeClass(client, const String:command[], args)
 {
 	decl String:classString[16];
-	new class;
-
 	GetCmdArg(1, classString, sizeof(classString));
-	if(!strcmp(classString, "scout", false))
-	{
-		class=TF_CLASS_SCOUT;
-	}
-	else if(!strcmp(classString, "soldier", false))
-	{
-		class=TF_CLASS_SOLDIER;
-	}
-	else if(!strcmp(classString, "pyro", false))
-	{
-		class=TF_CLASS_PYRO;
-	}
-	else if(!strcmp(classString, "demoman", false))
-	{
-		class=TF_CLASS_DEMOMAN;
-	}
-	else if(!strcmp(classString, "heavyweapons", false))
-	{
-		class=TF_CLASS_HEAVY;
-	}
-	else if(!strcmp(classString, "engineer", false))
-	{
-		class=TF_CLASS_ENGINEER;
-	}
-	else if(!strcmp(classString, "medic", false))
-	{
-		class=TF_CLASS_MEDIC;
-	}
-	else if(!strcmp(classString, "sniper", false))
-	{
-		class=TF_CLASS_SNIPER;
-	}
-	else if(!strcmp(classString, "spy", false))
-	{
-		class=TF_CLASS_SPY;
-	}
-	else if(!strcmp(classString, "random", false))
-	{
-		class=TF_CLASS_UNKNOWN;
-	}
-
+	new class=ClassStringToClass(classString);
 	if(enabled && !IsValidClass(client, class))
 	{
 		EmitSoundToClient(client, classSounds[class]);
 		PrintCenterText(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
 		CPrintToChat(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's {red}Red ", classNames[redClass], "{default} vs {blue}Blue ", classNames[blueClass]);
-		AssignValidClass(client);
 		return Plugin_Handled;
 	}
 	return Plugin_Continue;
@@ -373,9 +330,8 @@ public Action:ForceChangeClass(client, args)
 		}
 		case 2:
 		{
-			new randomize=0;
-			decl String:red[10];
-			decl String:blue[10];
+			decl String:red[10], String:blue[10];
+			new randomize;
 			GetCmdArg(1, red, sizeof(red));
 			GetCmdArg(2, blue, sizeof(blue));
 
@@ -441,92 +397,14 @@ DisplayVote(client, mode)
 		SetVoteResultCallback(voteMenu, Handler_VoteChooseClass);
 
 		SetMenuTitle(voteMenu, "Choose your classes!");
-		for(new i=1; i<=5; i++)  //Probably a much cleaner way of doing this, but eh
+		for(new i=1; i<=5; i++)
 		{
-			new class1=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
-			new class2=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
 			decl String:info[2], String:finalDisplay[22], String:display[2][10];
-			switch(class1)
-			{
-				case 1:
-				{
-					Format(display[0], 10, "Scout");
-				}
-				case 2:
-				{
-					Format(display[0], 10, "Soldier");
-				}
-				case 3:
-				{
-					Format(display[0], 10, "Pyro");
-				}
-				case 4:
-				{
-					Format(display[0], 10, "Demoman");
-				}
-				case 5:
-				{
-					Format(display[0], 10, "Heavy");
-				}
-				case 6:
-				{
-					Format(display[0], 10, "Engineer");
-				}
-				case 7:
-				{
-					Format(display[0], 10, "Medic");
-				}
-				case 8:
-				{
-					Format(display[0], 10, "Sniper");
-				}
-				case 9:
-				{
-					Format(display[0], 10, "Spy");
-				}
-			}
-
-			switch(class2)
-			{
-				case 1:
-				{
-					Format(display[1], 10, "Scout");
-				}
-				case 2:
-				{
-					Format(display[1], 10, "Soldier");
-				}
-				case 3:
-				{
-					Format(display[1], 10, "Pyro");
-				}
-				case 4:
-				{
-					Format(display[1], 10, "Demoman");
-				}
-				case 5:
-				{
-					Format(display[1], 10, "Heavy");
-				}
-				case 6:
-				{
-					Format(display[1], 10, "Engineer");
-				}
-				case 7:
-				{
-					Format(display[1], 10, "Medic");
-				}
-				case 8:
-				{
-					Format(display[1], 10, "Sniper");
-				}
-				case 9:
-				{
-					Format(display[1], 10, "Spy");
-				}
-			}
-			Format(finalDisplay, sizeof(finalDisplay), "%s vs %s", display[0], display[1]);
-			Format(info, sizeof(info), "%i", i);
+			new class1=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER), class2=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
+			Format(display[0], 10, classNames[class1]);
+			Format(display[1], 10, classNames[class2]);
+			Format(finalDisplay, sizeof(finalDisplay), "%s vs %s", display[0], display[1]);  //Todo: Red %s vs Blue %s
+			Format(info, sizeof(info), "%i", i);  //Todo: Send something useful here
 			AddMenuItem(voteMenu, info, finalDisplay);
 		}
 		SetMenuTitle(voteMenu, "Choose your classes!");
@@ -659,7 +537,7 @@ UpdateGameDescription(bool:enable)
 
 stock ClassStringToClass(String:classString[])
 {
-	for(new class=0; class<sizeof(classNames); class++)
+	for(new class; class<sizeof(classNames); class++)
 	{
 		if(!strcmp(classNames[class], classString, false))
 		{
