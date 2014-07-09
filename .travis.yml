@@ -1,8 +1,7 @@
 env:
     - SMVERSION=1.6
 before_install:
-    - sudo apt-get -qq update
-    - sudo apt-get install gcc-multilib lynx > /dev/null
+    - sudo apt-get -qq update && sudo apt-get install gcc-multilib lynx
 install:
     - SMPATTERN="http:.*sourcemod-.*-git.*-linux.*"
     - SMURL="http://www.sourcemod.net/smdrop/$SMVERSION/"

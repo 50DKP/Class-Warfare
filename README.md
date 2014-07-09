@@ -1,6 +1,6 @@
 Class Warfare
 =============
-**LATEST VERSION**: 2.0.0
+**LATEST VERSION**: 2.0.2
 
 [![Build Status](https://travis-ci.org/50DKP/Class-Warfare.svg?branch=master)](https://travis-ci.org/50DKP/Class-Warfare)
 
