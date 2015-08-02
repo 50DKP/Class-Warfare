@@ -44,8 +44,8 @@ new Float:voteDelay;
 static String:classSounds[10][24]={"", "vo/scout_no03.wav", "vo/sniper_no04.wav", "vo/soldier_no01.wav", "vo/demoman_no03.wav", "vo/medic_no03.wav", "vo/heavy_no02.wav", "vo/pyro_no01.wav", "vo/spy_no02.wav", "vo/engineer_no03.wav"};
 static String:classNames[TFClassType][]={"Random", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
 
-new TFTeam:blueClass;
-new TFTeam:redClass;
+new TFClassType:blueClass;
+new TFClassType:redClass;
 
 new rounds;
 
@@ -186,7 +186,7 @@ public Action:OnChangeClass(client, const String:command[], args)
 	{
 		decl String:classString[16];
 		GetCmdArg(1, classString, sizeof(classString));
-		new TFTeam:class=ClassStringToClass(classString);
+		new TFClassType:class=ClassStringToClass(classString);
 		if(enabled && !IsValidClass(client, class))
 		{
 			EmitSoundToClient(client, classSounds[class]);
@@ -533,7 +533,7 @@ UpdateGameDescription(bool:enable)
 	}
 }
 
-stock ClassStringToClass(String:classString[])
+stock TFClassType:ClassStringToClass(String:classString[])
 {
 	for(new class; class<sizeof(classNames); class++)
 	{
@@ -545,7 +545,7 @@ stock ClassStringToClass(String:classString[])
 
 	if(StrEqual("demo", classString, false))
 	{
-		return TFClass_Demoman;
+		return TFClass_DemoMan;
 	}
 	else if(StrEqual("heavyweapons", classString, false))
 	{
