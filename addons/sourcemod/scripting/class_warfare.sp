@@ -13,20 +13,6 @@
 
 #define PLUGIN_VERSION "2.1.0 Beta"
 
-#define TF_CLASS_UNKNOWN		0
-#define TF_CLASS_SCOUT			1
-#define TF_CLASS_SNIPER			2
-#define TF_CLASS_SOLDIER		3
-#define TF_CLASS_DEMOMAN		4
-#define TF_CLASS_MEDIC			5
-#define TF_CLASS_HEAVY			6
-#define TF_CLASS_PYRO			7
-#define TF_CLASS_SPY			8
-#define TF_CLASS_ENGINEER		9
-
-#define TF_TEAM_RED				2
-#define TF_TEAM_BLU				3
-
 #define VOTE_NO					"###no###"
 #define VOTE_YES				"###yes###"
 
@@ -104,7 +90,7 @@ public OnPluginStart()
 public OnLibraryAdded(const String:name[])
 {
 	#if defined _steamtools_included
-	if(!strcmp(name, "SteamTools", false))
+	if(StrEqual(name, "SteamTools", false))
 	{
 		steamtools=true;
 	}
@@ -114,7 +100,7 @@ public OnLibraryAdded(const String:name[])
 public OnLibraryRemoved(const String:name[])
 {
 	#if defined _steamtools_included
-	if(!strcmp(name, "SteamTools", false))
+	if(StrEqual(name, "SteamTools", false))
 	{
 		steamtools=false;
 	}
@@ -177,7 +163,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		}
 	}
 	return Plugin_Continue;
-} 
+}
 
 public Action:OnSetupFinished(Handle:event, const String:name[], bool:dontBroadcast)
 {
@@ -224,7 +210,7 @@ stock bool:IsValidClass(client, class)
 		return true;
 	}
 
-	if(class!=(GetClientTeam(client)==TF_TEAM_RED ? redClass : blueClass))
+	if(class!=(TF2_GetClientTeam(client)==TFTeam_Red ? redClass : blueClass))
 	{
 		return false;
 	}
@@ -259,8 +245,8 @@ SetupClassRestrictions(randomize=1)
 {
 	if(randomize)
 	{
-		blueClass=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
-		redClass=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
+		blueClass=TFTeam:GetRandomInt(1, sizeof(TFClassType)-1);
+		redClass=TFTeam:GetRandomInt(1, sizeof(TFClassType)-1);
 	}
 
 	new seconds=GetConVarInt(cvarClassChangeInterval)*60;
@@ -290,12 +276,12 @@ AssignValidClass(client)
 {
 	if(!IsPlayerAlive(client))
 	{
-		TF2_SetPlayerClass(client, (GetClientTeam(client)==TF_TEAM_RED ? (TFClassType:redClass) : (TFClassType:blueClass)));
+		TF2_SetPlayerClass(client, (TF2_GetClientTeam(client)==TFTeam_Red ? (redClass) : (blueClass)));
 	}
 	else
 	{
 		SetEntProp(client, Prop_Send, "m_lifeState", 2);
-		TF2_SetPlayerClass(client, (GetClientTeam(client)==TF_TEAM_RED ? (TFClassType:redClass) : (TFClassType:blueClass)));
+		TF2_SetPlayerClass(client, (TF2_GetClientTeam(client)==TFTeam_Red ? (redClass) : (blueClass)));
 		SetEntProp(client, Prop_Send, "m_lifeState", 0);
 		TF2_RespawnPlayer(client);
 	}
@@ -305,7 +291,7 @@ AssignPlayerClasses()
 {
 	for(new client=1; client<=MaxClients; client++)
 	{
-		if(IsValidClient(client) && !IsValidClass(client, _:TF2_GetPlayerClass(client)))
+		if(IsValidClient(client) && !IsValidClass(client, TF2_GetPlayerClass(client)))
 		{
 			AssignValidClass(client);
 		}
@@ -349,9 +335,9 @@ public Action:ForceChangeClass(client, args)
 
 			redClass=ClassStringToClass(red);
 			blueClass=ClassStringToClass(blue);
-			if(redClass==TF_CLASS_UNKNOWN || blueClass==TF_CLASS_UNKNOWN)
+			if(redClass==TFClass_Unknown || blueClass==TFClass_Unknown)
 			{
-				CPrintToChat(client, "{red}[Class Warfare]{default} Invalid class for %s team!", redClass==TF_CLASS_UNKNOWN ? "Red" : "Blue");
+				CPrintToChat(client, "{red}[Class Warfare]{default} Invalid class for %s team!", redClass==TFClass_Unknown ? "Red" : "Blue");
 				randomize=1;
 			}
 			CreateTimer(0.0, Timer_Change_Class, randomize);
@@ -440,7 +426,7 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 	{
 		decl String:display[64];
 		GetMenuItem(menu, menuPosition, "", 0, _, display, sizeof(display));
-		if(!strcmp(display, VOTE_NO) || !strcmp(display, VOTE_YES))
+		if(StrEqual(display, VOTE_NO) || StrEqual(display, VOTE_YES))
 		{
 			decl String:buffer[255];
 			Format(buffer, sizeof(buffer), "%T", display, option);
@@ -460,15 +446,15 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 
 		GetMenuVoteInfo(menuPosition, votes, totalVotes);
 		GetMenuItem(menu, option, item, sizeof(item));
-		
-		if(!strcmp(item, VOTE_NO) && option==1)
+
+		if(StrEqual(item, VOTE_NO) && option==1)
 		{
 			votes=totalVotes-votes;
 		}
 
 		percent=FloatDiv(float(votes), float(totalVotes));
 
-		if((!strcmp(item, VOTE_YES) && FloatCompare(percent, limit)<0 && option) || (!strcmp(item, VOTE_NO) && option==1))
+		if((StrEqual(item, VOTE_YES) && FloatCompare(percent, limit)<0 && option) || (StrEqual(item, VOTE_NO) && option==1))
 		{
 			CPrintToChatAll("{red}[Class Warfare]{default} %t", "Vote Failed", RoundToNearest(100.0*limit), RoundToNearest(100.0*percent), totalVotes);
 			LogAction(-1, -1, "[Class Warfare] Vote failed");
@@ -514,9 +500,9 @@ public Handler_VoteChooseClass(Handle:menu, votes, clients, const clientInfo[][2
 
 	redClass=ClassStringToClass(classes[0]);
 	blueClass=ClassStringToClass(classes[1]);
-	if(redClass==TF_CLASS_UNKNOWN || blueClass==TF_CLASS_UNKNOWN)
+	if(redClass==TFClass_Unknown || blueClass==TFClass_Unknown)
 	{
-		LogError("[Class Warfare] Class vote returned an unknown class for %s team!", redClass==TF_CLASS_UNKNOWN ? "Red" : "Blue");
+		LogError("[Class Warfare] Class vote returned an unknown class for %s team!", redClass==TFClass_Unknown ? "Red" : "Blue");
 		randomize=1;
 	}
 
@@ -551,21 +537,21 @@ stock ClassStringToClass(String:classString[])
 {
 	for(new class; class<sizeof(classNames); class++)
 	{
-		if(!strcmp(classNames[class], classString, false))
+		if(StrEqual(classNames[class], classString, false))
 		{
 			return class;
 		}
 	}
 
-	if(!strcmp("demo", classString, false))
+	if(StrEqual("demo", classString, false))
 	{
 		return TF_CLASS_DEMOMAN;
 	}
-	else if(!strcmp("heavyweapons", classString, false))
+	else if(StrEqual("heavyweapons", classString, false))
 	{
 		return TF_CLASS_HEAVY;
 	}
-	else if(!strcmp("engie", classString, false))
+	else if(StrEqual("engie", classString, false))
 	{
 		return TF_CLASS_ENGINEER;
 	}

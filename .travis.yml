@@ -1,37 +1,30 @@
+#Use the new container-based infrastructure
+sudo: false
+
+#Install some apt packages needed for spcomp
+addons:
+    apt_packages:
+        - lib32stdc++6
+
+#Set the build environment
 env:
-    - SMVERSION=1.6
-before_install:
-    - sudo apt-get -qq update && sudo apt-get install gcc-multilib lynx
+    - SMVERSION=1.7
+    - SMVERSION=1.8
+
+#And compile!
 install:
-    - SMPATTERN="http:.*sourcemod-.*-git.*-linux.*"
-    - SMURL="http://www.sourcemod.net/smdrop/$SMVERSION/"
-    - SMPACKAGE=`lynx -dump "$SMURL" | egrep -o "$SMPATTERN" | tail -1`
-    - wget $SMPACKAGE
-    - tar -xzf $(basename "$SMPACKAGE")
-    - STEAMTOOLSURL="http://builds.limetech.org/files/"
-    - STEAMTOOLSPATTERN="http:.*steamtools-.*-git.*-.*-linux.zip"
-    - STEAMTOOLSPACKAGE=`lynx -dump "$STEAMTOOLSURL" | egrep -o "$STEAMTOOLSPATTERN" | tail -1`
-    - wget $STEAMTOOLSPACKAGE
-    - unzip -ou $(basename "$STEAMTOOLSPACKAGE")
+    - wget http://sourcemod.net/smdrop/$SMVERSION/ -O - | grep "\.tar\.gz" | sed 's/^.*"sourcemod/sourcemod/;s/\.tar\.gz".*$/.tar.gz/' | tail --lines=1 > sourcemod
+    - wget --input-file=sourcemod --base=http://sourcemod.net/smdrop/$SMVERSION/
+    - tar -xzf $(cat sourcemod)
 before_script:
     - cd addons/sourcemod/scripting/
-    - wget "https://www.doctormckay.com/download/scripting/include/morecolors.inc"
-    - mv morecolors.inc include/morecolors.inc
+    - wget "http://www.doctormckay.com/download/scripting/include/morecolors.inc" -O include/morecolors.inc
+    - wget "http://hg.limetech.org/projects/steamtools/raw-file/tip/plugin/steamtools.inc" -O include/steamtools.inc
+    - wget "https://bitbucket.org/GoD_Tony/updater/raw/default/include/updater.inc" -O include/updater.inc
     - chmod +x spcomp
-script:
-    - ./compile.sh class_warfare.sp
+    - mkdir compiled
+script: ./compile.sh class_warfare.sp
 
-#Releases
-before_deploy:
-    - mv compiled/class_warfare.smx .
-deploy:
-    provider: releases
-    api_key:
-        secure: a7ix8TmzAUmekBi3Zb/2eXNdoBWOW1pM3214qP+AiVJ9pYNQrC+wDpqt2RqDIctGJANrCedhxWzT8Ma+39B5QJ9z31Cfe/rxwIMH+Yd/jcUVOPfsFagAZdkABdd5ftdAkbdw/kJMoqtdX7vQbAhntSW0AChSfi0w/cewPi52kJs=
-    file:
-        - class_warfare.sp
-        - class_warfare.smx
-    on:
-        repo: 50DKP/Class-Warfare
-        branch: master
-        tags: true
+#Notifications
+notifications:
+    email: false
