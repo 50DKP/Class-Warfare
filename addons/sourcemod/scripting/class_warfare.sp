@@ -13,9 +13,6 @@
 
 #define PLUGIN_VERSION "2.1.0 Beta"
 
-#define VOTE_NO					"###no###"
-#define VOTE_YES				"###yes###"
-
 #if defined _steamtools_included
 new bool:steamtools;
 #endif
@@ -383,8 +380,8 @@ DisplayVote(client, mode)
 		voteMenu=CreateMenu(Handler_VoteRandomizeClass, MenuAction:MENU_ACTIONS_ALL);
 
 		SetMenuTitle(voteMenu, "Randomize classes again?");
-		AddMenuItem(voteMenu, VOTE_YES, "Yes");
-		AddMenuItem(voteMenu, VOTE_NO, "No");
+		AddMenuItem(voteMenu, "yes", "Yes");
+		AddMenuItem(voteMenu, "no", "No");
 
 		SetMenuExitButton(voteMenu, false);
 		VoteMenuToAll(voteMenu, 20);
@@ -426,7 +423,7 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 	{
 		decl String:display[64];
 		GetMenuItem(menu, menuPosition, "", 0, _, display, sizeof(display));
-		if(StrEqual(display, VOTE_NO) || StrEqual(display, VOTE_YES))
+		if(StrEqual(display, "no") || StrEqual(display, "yes"))
 		{
 			decl String:buffer[255];
 			Format(buffer, sizeof(buffer), "%T", display, option);
@@ -447,14 +444,14 @@ public Handler_VoteRandomizeClass(Handle:menu, MenuAction:action, option, menuPo
 		GetMenuVoteInfo(menuPosition, votes, totalVotes);
 		GetMenuItem(menu, option, item, sizeof(item));
 
-		if(StrEqual(item, VOTE_NO) && option==1)
+		if(StrEqual(item, "no") && option==1)
 		{
 			votes=totalVotes-votes;
 		}
 
 		percent=FloatDiv(float(votes), float(totalVotes));
 
-		if((StrEqual(item, VOTE_YES) && FloatCompare(percent, limit)<0 && option) || (StrEqual(item, VOTE_NO) && option==1))
+		if((StrEqual(item, "yes") && FloatCompare(percent, limit)<0 && option) || (StrEqual(item, "no") && option==1))
 		{
 			CPrintToChatAll("{red}[Class Warfare]{default} %t", "Vote Failed", RoundToNearest(100.0*limit), RoundToNearest(100.0*percent), totalVotes);
 			LogAction(-1, -1, "[Class Warfare] Vote failed");
