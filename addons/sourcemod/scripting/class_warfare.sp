@@ -198,7 +198,7 @@ public Action:OnChangeClass(client, const String:command[], args)
 	return Plugin_Continue;
 }
 
-stock bool:IsValidClass(client, class)
+stock bool:IsValidClass(client, TFClassType:class)
 {
 	if(!IsValidClient(client))
 	{
@@ -245,8 +245,8 @@ SetupClassRestrictions(randomize=1)
 {
 	if(randomize)
 	{
-		blueClass=TFTeam:GetRandomInt(1, 9);
-		redClass=TFTeam:GetRandomInt(1, 9);
+		blueClass=TFClassType:GetRandomInt(1, 9);
+		redClass=TFClassType:GetRandomInt(1, 9);
 	}
 
 	new seconds=GetConVarInt(cvarClassChangeInterval)*60;
@@ -535,7 +535,7 @@ UpdateGameDescription(bool:enable)
 
 stock TFClassType:ClassStringToClass(String:classString[])
 {
-	for(new class; class<sizeof(classNames); class++)
+	for(new TFClassType:class; class<sizeof(classNames); class++)
 	{
 		if(StrEqual(classNames[class], classString, false))
 		{
