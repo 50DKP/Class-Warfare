@@ -44,8 +44,8 @@ new Float:voteDelay;
 static String:classSounds[10][24]={"", "vo/scout_no03.wav", "vo/sniper_no04.wav", "vo/soldier_no01.wav", "vo/demoman_no03.wav", "vo/medic_no03.wav", "vo/heavy_no02.wav", "vo/pyro_no01.wav", "vo/spy_no02.wav", "vo/engineer_no03.wav"};
 static String:classNames[TFClassType][]={"Random", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"};
 
-new blueClass;
-new redClass;
+new TFTeam:blueClass;
+new TFTeam:redClass;
 
 new rounds;
 
@@ -186,7 +186,7 @@ public Action:OnChangeClass(client, const String:command[], args)
 	{
 		decl String:classString[16];
 		GetCmdArg(1, classString, sizeof(classString));
-		new class=ClassStringToClass(classString);
+		new TFTeam:class=ClassStringToClass(classString);
 		if(enabled && !IsValidClass(client, class))
 		{
 			EmitSoundToClient(client, classSounds[class]);
@@ -245,8 +245,8 @@ SetupClassRestrictions(randomize=1)
 {
 	if(randomize)
 	{
-		blueClass=TFTeam:GetRandomInt(1, sizeof(TFClassType)-1);
-		redClass=TFTeam:GetRandomInt(1, sizeof(TFClassType)-1);
+		blueClass=TFTeam:GetRandomInt(1, 9);
+		redClass=TFTeam:GetRandomInt(1, 9);
 	}
 
 	new seconds=GetConVarInt(cvarClassChangeInterval)*60;
@@ -398,7 +398,7 @@ DisplayVote(client, mode)
 		for(new i=1; i<=5; i++)
 		{
 			decl String:info[2], String:finalDisplay[22], String:display[2][10];
-			new class1=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER), class2=GetRandomInt(TF_CLASS_SCOUT, TF_CLASS_ENGINEER);
+			new class1=GetRandomInt(1, 9), class2=GetRandomInt(1, 9);
 			Format(display[0], 10, classNames[class1]);
 			Format(display[1], 10, classNames[class2]);
 			Format(finalDisplay, sizeof(finalDisplay), "%s vs %s", display[0], display[1]);  //Todo: Red %s vs Blue %s
@@ -545,17 +545,17 @@ stock ClassStringToClass(String:classString[])
 
 	if(StrEqual("demo", classString, false))
 	{
-		return TF_CLASS_DEMOMAN;
+		return TFClass_Demoman;
 	}
 	else if(StrEqual("heavyweapons", classString, false))
 	{
-		return TF_CLASS_HEAVY;
+		return TFClass_Heavy;
 	}
 	else if(StrEqual("engie", classString, false))
 	{
-		return TF_CLASS_ENGINEER;
+		return TFClass_Engineer;
 	}
-	return TF_CLASS_UNKNOWN;
+	return TFClass_Unknown;
 }
 
 stock bool:IsValidClient(client, bool:replay=true)
