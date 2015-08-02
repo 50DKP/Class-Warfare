@@ -535,11 +535,11 @@ UpdateGameDescription(bool:enable)
 
 stock TFClassType:ClassStringToClass(String:classString[])
 {
-	for(new TFClassType:class; class<sizeof(classNames); class++)
+	for(new class; class<sizeof(classNames); class++)
 	{
 		if(StrEqual(classNames[class], classString, false))
 		{
-			return class;
+			return TFClassType:class;
 		}
 	}
 
