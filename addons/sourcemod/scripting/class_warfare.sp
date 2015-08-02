@@ -56,12 +56,12 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 
 public OnPluginStart()
 {
-	CreateConVar("sm_classwarfare_version", PLUGIN_VERSION, "Class Warfare version", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	cvarEnabled=CreateConVar("sm_classwarfare_enabled", "1", "Enable/disable Class Warfare", FCVAR_PLUGIN|FCVAR_DONTRECORD, true, 0.0, true, 1.0);
-	cvarMode=CreateConVar("sm_classwarfare_mode", "0", "0-Classes are picked randomly, 1-Classes are picked by a vote", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-	cvarImmune=CreateConVar("sm_classwarfare_immunity", "0", "Enable/disable admins being immune to class restrictions", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+	CreateConVar("sm_classwarfare_version", PLUGIN_VERSION, "Class Warfare version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY|FCVAR_DONTRECORD);
+	cvarEnabled=CreateConVar("sm_classwarfare_enabled", "1", "Enable/disable Class Warfare", FCVAR_DONTRECORD, true, 0.0, true, 1.0);
+	cvarMode=CreateConVar("sm_classwarfare_mode", "0", "0-Classes are picked randomly, 1-Classes are picked by a vote", _, true, 0.0, true, 1.0);
+	cvarImmune=CreateConVar("sm_classwarfare_immunity", "0", "Whether admins are immune to class restrictions", _, true, 0.0, true, 1.0);
 	cvarFlags=CreateConVar("sm_classwarfare_flags", "", "Admin flags required for immunity (requires sm_classwarfare_immunity to be 1)");
-	cvarClassChangeInterval=CreateConVar("sm_classwarfare_change_interval", "0", "Shuffle the classes every x minutes, or 0 for round only", FCVAR_PLUGIN, true, 0.0);
+	cvarClassChangeInterval=CreateConVar("sm_classwarfare_change_interval", "0", "Shuffle the classes every x minutes, or 0 for round only", _, true, 0.0);
 
 	HookConVarChange(cvarEnabled, OnCvarChange);
 	HookConVarChange(cvarImmune, OnCvarChange);
