@@ -184,7 +184,7 @@ public Action:OnChangeClass(client, const String:command[], args)
 		decl String:classString[16];
 		GetCmdArg(1, classString, sizeof(classString));
 		new TFClassType:class=ClassStringToClass(classString);
-		if(enabled && !IsValidClass(client, class))
+		if(!IsValidClass(client, class))
 		{
 			EmitSoundToClient(client, classSounds[class]);
 			PrintCenterText(client, "%s%s%s%s%s", classNames[class], " is not an option this round! It's Red ", classNames[redClass], " vs Blue ", classNames[blueClass]);
